@@ -53,11 +53,23 @@ Produce:
 - summary: exactly two paragraphs. P1: what they build and how (stack, open-source posture). P2: what the activity implies about team momentum and what an AE should be aware of, including evidence gaps.
 - outreach_hook: ONE specific opening sentence (max 35 words) for a cold email, referencing a concrete detail from the evidence (a repo, language mix, tool, or activity pattern)${pitch ? " and connecting it to what we sell" : ""}. No greetings, no flattery clichés like "I came across" or "I noticed you're a leader in", no template feel.`;
 
-  const res = await ai.models.generateContent({
-    model: MODEL(),
-    contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.6 },
-  });
+  // Gemini returns 429/500/503 during demand spikes; retry with backoff before giving up.
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await ai.models.generateContent({
+        model: MODEL(),
+        contents: prompt,
+        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.6 },
+      });
+      break;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const transient = /"code":\s*(429|500|503|504)|UNAVAILABLE|RESOURCE_EXHAUSTED/.test(msg);
+      if (!transient || attempt >= 3) throw e;
+      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+    }
+  }
   const text = res.text;
   if (!text) throw new Error("Gemini returned an empty response");
   const out = JSON.parse(text) as Intel;
