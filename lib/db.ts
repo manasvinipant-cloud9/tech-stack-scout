@@ -80,7 +80,24 @@ export function ensureSchema() {
 const COLS = `id, company_name, domain, github_org, status, last_updated, languages,
   infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, fit_score, analysis, signals, created_at`;
 
-const toCompany = (r: Record<string, unknown>) => r as unknown as Company;
+/** Rows researched before newer signal fields existed lack them; fill defaults so the UI never crashes on old data. */
+const toCompany = (r: Record<string, unknown>): Company => {
+  const c = r as unknown as Company;
+  if (c.signals?.jobs) {
+    const j = c.signals.jobs;
+    j.toolMentions ??= [];
+    j.descriptionsScanned ??= 0;
+    j.microservicesMentions ??= 0;
+    j.sampleTitles ??= [];
+  }
+  if (c.signals?.blog) c.signals.blog.posts ??= [];
+  if (c.analysis) {
+    c.analysis.technologies ??= [];
+    c.analysis.fit_reasons ??= [];
+    c.analysis.open_questions ??= [];
+  }
+  return c;
+};
 
 export async function listCompanies(): Promise<Company[]> {
   await ensureSchema();
