@@ -16,6 +16,8 @@ export type Intel = {
 };
 
 const MODEL = () => process.env.GEMINI_MODEL || "gemini-3.8-flash";
+// Second Flash model tried when the first is overloaded. Both are Gemini Flash, as the brief requires.
+const FALLBACK_MODEL = () => process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-latest";
 const str = { type: Type.STRING };
 const SOURCES = ["github", "website", "jobs", "blog", "none"];
 
@@ -106,25 +108,32 @@ Produce:
 - summary: exactly two paragraphs. P1: what they build and how. P2: what the activity implies and which evidence gaps the AE should probe.
 - outreach_hook: ONE specific opening sentence, STRICT maximum 28 words, referencing a concrete detail from the evidence${pitch ? " and connecting it to what we sell" : ""}. No greetings, no "I came across", no flattery.`;
 
-  // Gemini returns 429/500/503 during demand spikes; retry with backoff before giving up.
+  // Gemini returns 429/500/503 during demand spikes: retry with backoff, then fall back to a second Flash model.
   let res;
   const t0 = Date.now();
-  for (let attempt = 0; ; attempt++) {
-    try {
-      res = await ai.models.generateContent({
-        model: MODEL(),
-        contents: prompt,
-        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { timeout: 100_000 } },
-      });
-      break;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      const transient = /"code":\s*(429|500|503|504)|UNAVAILABLE|RESOURCE_EXHAUSTED/.test(msg);
-      if (!transient || attempt >= 3) throw e;
-      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+  const models = [...new Set([MODEL(), FALLBACK_MODEL()])];
+  let lastErr: unknown;
+  outer: for (const model of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { timeout: 100_000 } },
+        });
+        console.log(`[gemini] ${name}: ${model} ${Date.now() - t0}ms`);
+        break outer;
+      } catch (e) {
+        lastErr = e;
+        const msg = e instanceof Error ? e.message : String(e);
+        const transient = /"code":\s*(404|429|500|503|504)|UNAVAILABLE|RESOURCE_EXHAUSTED|NOT_FOUND|timed out|aborted/i.test(msg);
+        if (!transient) throw e;
+        if (/NOT_FOUND|"code":\s*404/.test(msg)) break; // this model is unavailable to us; go straight to the next one
+        await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+      }
     }
   }
-  console.log(`[gemini] ${name}: ${Date.now() - t0}ms`);
+  if (!res) throw lastErr instanceof Error ? lastErr : new Error("Gemini is unavailable");
   if (!res.text) throw new Error("Gemini returned an empty response");
   const out = JSON.parse(res.text) as Intel;
   out.outreach_hook = await tightenHook(ai, out.outreach_hook);
@@ -156,7 +165,7 @@ async function tightenHook(ai: GoogleGenAI, hook: string): Promise<string> {
   if (words(hook) <= 32) return hook;
   try {
     const r = await ai.models.generateContent({
-      model: MODEL(),
+      model: FALLBACK_MODEL(),
       contents: `Rewrite this cold-email opening line in at most 25 words. Keep the most specific concrete detail and the link to the product. Return only the sentence.\n\n${hook}`,
       config: { temperature: 0.3, thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
     });
