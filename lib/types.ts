@@ -23,5 +23,6 @@ export type Analysis = {
   orchestration: string;
   fit_reasons: FitReason[];
   open_questions: string[];
+  hook?: { signal: string; source: Source };
   architecture?: { style: "microservices" | "monolith" | "mixed" | "unknown"; evidence: string; source: Source };
 };

@@ -57,3 +57,49 @@ export function facts(c: Company): string[] {
   if (c.fit_score != null) out.push(`Fit ${c.fit_score} · ${sourcedCount(c)} sourced, ${unsourcedCount(c)} unsourced reasons`);
   return out;
 }
+
+// ---------- presentation helpers ----------
+export type FitCategory = "strong" | "good" | "moderate" | "low" | "unscored";
+export const FIT_CATEGORIES: { key: FitCategory; label: string; range: string }[] = [
+  { key: "strong", label: "Strong", range: "80+" },
+  { key: "good", label: "Good", range: "60–79" },
+  { key: "moderate", label: "Moderate", range: "40–59" },
+  { key: "low", label: "Low", range: "below 40" },
+  { key: "unscored", label: "Unscored", range: "no score" },
+];
+export const fitCategory = (n: number | null): FitCategory => (n == null ? "unscored" : n >= 80 ? "strong" : n >= 60 ? "good" : n >= 40 ? "moderate" : "low");
+
+export function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "Never";
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h > 1 ? "s" : ""} ago`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d > 1 ? "s" : ""} ago`;
+}
+
+/** Public pages behind the findings, so every claim can be inspected. */
+export function sourceLinks(c: Company): { key: Source; label: string; url: string }[] {
+  const out: { key: Source; label: string; url: string }[] = [];
+  const g = c.signals?.github;
+  if (g) out.push({ key: "github", label: `github.com/${g.org}`, url: g.url });
+  const j = c.signals?.jobs;
+  if (j) {
+    const base = j.source === "Greenhouse" ? "https://boards.greenhouse.io/" : j.source === "Lever" ? "https://jobs.lever.co/" : "https://jobs.ashbyhq.com/";
+    out.push({ key: "jobs", label: `${j.source} · ${j.board}`, url: base + j.board });
+  }
+  const b = c.signals?.blog;
+  if (b) out.push({ key: "blog", label: b.url.replace(/^https?:\/\//, "").replace(/\/$/, ""), url: b.url });
+  if (c.signals?.site) out.push({ key: "website", label: c.domain, url: `https://${c.domain}` });
+  return out;
+}
+export const sourceUrl = (c: Company, s: Source) => sourceLinks(c).find((l) => l.key === s)?.url ?? null;
+
+/** One evidence-backed sentence on why an account is relevant: the strongest sourced fit reason, else the first computed fact. */
+export function whyLine(c: Company): string {
+  const best = [...(c.analysis?.fit_reasons ?? [])].filter((r) => r.source !== "none").sort((a, b) => b.strength - a.strength)[0];
+  if (best) return `${best.context} → ${best.capability}`;
+  return facts(c)[0] ?? "Research is available, but no sourced fit reason was found yet.";
+}

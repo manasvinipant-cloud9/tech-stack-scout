@@ -1,23 +1,27 @@
-import Link from "next/link";
-import Header from "@/components/Header";
+import AppShell from "@/components/AppShell";
 import { dbConfigured, listCompanies } from "@/lib/db";
+import { fmtDate, relativeTime } from "@/lib/derive";
+import { nextRunLabel } from "@/lib/schedule";
+import { loadIcp } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  await loadIcp();
   let companies: { id: number; name: string; domain: string }[] = [];
+  let last: string | null = null;
   if (dbConfigured()) {
     try {
-      companies = (await listCompanies()).map((c) => ({ id: c.id, name: c.company_name, domain: c.domain }));
+      const all = await listCompanies();
+      companies = all.map((c) => ({ id: c.id, name: c.company_name, domain: c.domain }));
+      const times = all.map((c) => c.last_updated).filter((t): t is string => !!t).sort();
+      last = times.length ? relativeTime(times[times.length - 1]) : null;
     } catch {}
   }
+  void fmtDate;
   return (
-    <>
-      <Header companies={companies} />
-      <main className="mx-auto max-w-[1376px] px-4 pb-10 pt-7 sm:px-8">{children}</main>
-      <footer className="mx-auto max-w-[1376px] px-4 pb-8 print:hidden font-mono text-[11px] uppercase tracking-[0.06em] text-ink-4 sm:px-8">
-        <Link href="/components-map" className="hover:text-ink">Components map</Link> · Gemini Flash · Neon Postgres · Vercel
-      </footer>
-    </>
+    <AppShell companies={companies} lastResearch={last} nextRefresh={nextRunLabel()}>
+      {children}
+    </AppShell>
   );
 }

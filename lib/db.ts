@@ -25,6 +25,19 @@ export type Company = {
   created_at: string;
 };
 
+export type ResearchRun = {
+  id: number;
+  company_id: number;
+  company_name?: string;
+  status: "success" | "error";
+  fit_score: number | null;
+  prev_fit: number | null;
+  note: string | null;
+  changes: string[];
+  error: string | null;
+  created_at: string;
+};
+
 export type Note = { id: number; company_id: number; text: string; tags: string[]; created_at: string };
 
 export const dbConfigured = () => Boolean(process.env.DATABASE_URL);
@@ -71,6 +84,23 @@ export function ensureSchema() {
         text       TEXT NOT NULL,
         tags       JSONB NOT NULL DEFAULT '[]'::jsonb,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+    await sql()`
+      CREATE TABLE IF NOT EXISTS research_runs (
+        id         SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL REFERENCES target_companies(id) ON DELETE CASCADE,
+        status     TEXT NOT NULL,
+        fit_score  INTEGER,
+        prev_fit   INTEGER,
+        note       TEXT,
+        changes    JSONB NOT NULL DEFAULT '[]'::jsonb,
+        error      TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+    await sql()`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key   TEXT PRIMARY KEY,
+        value JSONB NOT NULL
       )`;
   })().catch((e) => {
     schemaReady = null;
@@ -205,4 +235,47 @@ export async function addNote(companyId: number, text: string, tags: string[]): 
     [companyId, text, JSON.stringify(tags)]
   )) as unknown as Note[];
   return rows[0];
+}
+
+// ---------- research run history ----------
+export async function logRun(r: { companyId: number; status: "success" | "error"; fit: number | null; prevFit: number | null; note: string | null; changes: string[]; error?: string | null }) {
+  await ensureSchema();
+  await sql().query(
+    `INSERT INTO research_runs (company_id, status, fit_score, prev_fit, note, changes, error) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
+    [r.companyId, r.status, r.fit, r.prevFit, r.note, JSON.stringify(r.changes), r.error ?? null]
+  );
+}
+
+export async function listRuns(limit = 40, companyId?: number): Promise<ResearchRun[]> {
+  await ensureSchema();
+  const rows = (await sql().query(
+    `SELECT r.id, r.company_id, c.company_name, r.status, r.fit_score, r.prev_fit, r.note, r.changes, r.error, r.created_at
+     FROM research_runs r JOIN target_companies c ON c.id = r.company_id
+     ${companyId ? "WHERE r.company_id = $2" : ""}
+     ORDER BY r.created_at DESC LIMIT $1`,
+    companyId ? [limit, companyId] : [limit]
+  )) as unknown as ResearchRun[];
+  return rows;
+}
+
+// ---------- settings (key/value) ----------
+export async function getSetting<T>(key: string): Promise<T | null> {
+  await ensureSchema();
+  const rows = (await sql().query(`SELECT value FROM app_settings WHERE key = $1`, [key])) as { value: T }[];
+  return rows[0]?.value ?? null;
+}
+
+export async function setSetting(key: string, value: unknown) {
+  await ensureSchema();
+  await sql().query(`INSERT INTO app_settings (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [key, JSON.stringify(value)]);
+}
+
+/** Replace the stored opening line and the signal it is based on. */
+export async function saveHook(id: number, line: string, hook: { signal: string; source: string }) {
+  await sql().query(
+    `UPDATE target_companies SET outreach_hook = $2,
+       analysis = jsonb_set(COALESCE(analysis, '{}'::jsonb), '{hook}', $3::jsonb, true)
+     WHERE id = $1`,
+    [id, line, JSON.stringify(hook)]
+  );
 }

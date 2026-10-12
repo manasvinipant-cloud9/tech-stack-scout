@@ -1,4 +1,4 @@
-import { getCompany, saveIntel, setStatus } from "./db";
+import { getCompany, logRun, saveIntel, setStatus } from "./db";
 import { analyzeCompany } from "./gemini";
 import { gatherSignals } from "./signals";
 import type { FitReason } from "./types";
@@ -48,8 +48,23 @@ export async function researchCompany(id: number) {
         fit_reasons: intel.fit_reasons,
         open_questions: intel.open_questions,
         architecture: intel.architecture,
+        hook: { signal: intel.hook_signal, source: intel.hook_source },
       },
     });
+    // Record what changed since the previous run, so the activity feed reports real events.
+    const g = signals.github;
+    const changes: string[] = [];
+    const fit = computeFit(intel.fit_reasons);
+    if (c.last_updated) {
+      if (fit != null && c.fit_score != null && fit !== c.fit_score) changes.push(`Fit ${c.fit_score} → ${fit}`);
+      const roles = signals.jobs?.engineeringOpen ?? null;
+      if (roles != null && c.hiring_roles != null && roles !== c.hiring_roles) changes.push(`Eng roles ${c.hiring_roles} → ${roles}`);
+      const active = g?.reposPushedLast90d ?? null;
+      const prevActive = c.signals?.github?.reposPushedLast90d ?? null;
+      if (active != null && prevActive != null && active !== prevActive) changes.push(`Active repos ${prevActive} → ${active}`);
+    }
+    const note = [g && `${g.reposPushedLast90d} repos active`, signals.jobs && `${signals.jobs.engineeringOpen} eng roles`, signals.blog && `${signals.blog.postsLast90d} blog posts (90d)`].filter(Boolean).join(" · ");
+    await logRun({ companyId: id, status: "success", fit, prevFit: c.fit_score, note: note || "No public signals found", changes }).catch(() => {});
     return await getCompany(id);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -63,6 +78,7 @@ export async function researchCompany(id: number) {
         ? "Gemini is overloaded right now. Previous data is kept; retry in a few minutes."
         : raw;
     await setStatus(id, "error", msg.slice(0, 500));
+    await logRun({ companyId: id, status: "error", fit: null, prevFit: c.fit_score, note: null, changes: [], error: msg.slice(0, 300) }).catch(() => {});
     throw e;
   }
 }

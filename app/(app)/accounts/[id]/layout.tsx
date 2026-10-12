@@ -1,106 +1,105 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight, ExternalLink, FileText, PenLine } from "lucide-react";
 import AccountTabs from "@/components/AccountTabs";
-import { ChecklistStrip } from "@/components/Checklist";
-import { checklist } from "@/lib/checklist";
+import { IcpIndicators } from "@/components/Icp";
+import { CompanyLogo } from "@/components/Logos";
+import { RemoveCompany } from "@/components/RemoveCompany";
 import { AutoRefresh, ResearchButton } from "@/components/ResearchButton";
-import { Banner, Cap, FitNumber, btnSecondary } from "@/components/ui";
+import { Banner, Cap, FitBadge, StatusPill, btnPrimary, btnSecondary } from "@/components/ui";
 import { getAccount } from "@/lib/account";
+import { checklist } from "@/lib/checklist";
+import { FIT_CATEGORIES, STALE_DAYS, daysSince, fitCategory, fmtDate, hasData, isStale, relativeTime } from "@/lib/derive";
 import { listNotes } from "@/lib/db";
-import { daysSince, fmtDate, fmtDateYear, hasData, isStale } from "@/lib/derive";
-import { productName } from "@/lib/product";
+import { nextRunLabel } from "@/lib/schedule";
+import { loadIcp } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
+  await loadIcp();
   const c = await getAccount(id);
   if (!c) notFound();
   const notes = await listNotes(id);
-
   const researching = c.status === "researching";
+  const researched = hasData(c);
+  const stale = isStale(c);
+  const cat = FIT_CATEGORIES.find((x) => x.key === fitCategory(c.fit_score))!;
   const g = c.signals?.github;
-  const desc = c.signals?.site?.description ?? c.signals?.site?.title ?? null;
-
-  const meta: [string, string][] = [
-    ["Public repos", g ? String(g.publicRepos) : "—"],
-    ["Active 90d", g ? String(g.reposPushedLast90d) : "—"],
-    ["Eng roles", c.hiring_roles != null ? String(c.hiring_roles) : "—"],
-    ["Activity", c.activity_level ?? "—"],
-    ["Researched", c.last_updated ? fmtDateYear(c.last_updated) : "Never"],
-  ];
 
   return (
     <div>
       <AutoRefresh active={researching} />
-      <nav className="mb-5 flex items-center gap-1.5 text-[13px] text-ink-4">
-        <Link href="/accounts" className="hover:text-ink">Accounts</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-ink">{c.company_name}</span>
+      <nav className="mb-4 flex items-center gap-1.5 text-[13px] text-ink-4" aria-label="Breadcrumb">
+        <Link href="/accounts" className="hover:text-ink">Accounts</Link><ChevronRight className="h-3 w-3" /><span className="text-ink-2">{c.company_name}</span>
       </nav>
 
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-[44px] font-extrabold leading-none tracking-[-0.04em]">{c.company_name}</h1>
-          <p className="mt-3 text-[15px] text-ink-2">
-            {desc && <>{desc.slice(0, 140)} · </>}
-            <a className="link" href={`https://${c.domain}`} target="_blank" rel="noreferrer">{c.domain}</a>
-            {c.github_org && <> · <a className="link" href={`https://github.com/${c.github_org}`} target="_blank" rel="noreferrer">github.com/{c.github_org}</a></>}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
-            {meta.map(([k, v]) => (
-              <span key={k} className="whitespace-nowrap"><span className="text-ink-4">{k}</span> <span className="font-semibold">{v}</span></span>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-5">
-          <div className="text-right">
-            <FitNumber n={c.fit_score} size="lg" />
-            <div className="mt-1 text-[11px] uppercase tracking-[0.08em] text-ink-3">Fit with {productName()}</div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <ResearchButton id={c.id} primary />
-            {hasData(c) && !researching && <Link href={`/brief/${c.id}`} className={btnSecondary}><FileText className="h-3.5 w-3.5" /> Call brief</Link>}
-          </div>
-        </div>
-      </div>
-
-      {hasData(c) && !researching && <div className="mt-5"><ChecklistStrip checks={checklist(c)} /></div>}
-
-      <div className="mt-6">
-        <AccountTabs id={c.id} counts={{ stack: c.analysis?.technologies.length ?? 0, notes: notes.length }} />
-        <div className="rounded-b-[18px] rounded-tr-[18px] border border-line bg-panel p-4 sm:p-6">
-          {researching ? (
-            <div>
-              <Cap>Researching · GitHub · website · job boards · fit analysis</Cap>
-              <div className="mt-5 space-y-4">
-                {[60, 85, 45, 70, 55].map((w, i) => <div key={i} className="skel h-3" style={{ width: `${w}%` }} />)}
-              </div>
-              <p className="mt-6 text-sm text-ink-3">This takes about 20–40 seconds. The page updates by itself.</p>
-            </div>
-          ) : !hasData(c) ? (
-            <div className="space-y-4">
-              {c.status === "error" && c.error && <Banner tone="bad">Last run failed: {c.error}</Banner>}
-              <h2 className="text-[28px] font-bold tracking-[-0.02em]">Not researched</h2>
-              <p className="max-w-xl text-sm text-ink-3">
-                Collects public signals from {c.domain}, its GitHub org and job boards, maps the stack, and scores fit with your product.
+      <header className="rounded-xl border border-line bg-panel p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+          <div className="flex min-w-0 flex-1 basis-[420px] items-start gap-4">
+            <CompanyLogo name={c.company_name} domain={c.domain} size={56} />
+            <div className="min-w-0">
+              <h1 className="text-[28px] font-bold leading-none tracking-[-0.03em]">{c.company_name}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-3">
+                <a className="inline-flex items-center gap-1 hover:text-accent" href={`https://${c.domain}`} target="_blank" rel="noreferrer">{c.domain}<ExternalLink className="h-3 w-3" /></a>
+                {g && <a className="inline-flex items-center gap-1 hover:text-accent" href={g.url} target="_blank" rel="noreferrer">github.com/{g.org}<ExternalLink className="h-3 w-3" /></a>}
               </p>
-              <ResearchButton id={c.id} label="Run research" primary />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {c.status === "error" && (
-                <Banner tone="bad" action={<ResearchButton id={c.id} label="Retry" className="[&_button]:h-auto [&_button]:border-0 [&_button]:p-0 [&_button]:underline" />}>
-                  Last run failed: {c.error ?? "unknown error"}. Showing data from {fmtDate(c.last_updated!)}.
-                </Banner>
+              {researched && !researching && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <IcpIndicators checks={checklist(c)} />
+                  <StatusPill tone={stale ? "warn" : "good"}>{stale ? `Stale · ${daysSince(c.last_updated!)} days old` : `Researched ${relativeTime(c.last_updated)}`}</StatusPill>
+                  <span className="text-xs text-ink-4">Next refresh {nextRunLabel()}</span>
+                </div>
               )}
-              {isStale(c) && <Banner tone="warn">Researched {daysSince(c.last_updated!)} days ago. The weekly refresh runs Mondays 06:00 UTC, or re-research now.</Banner>}
-              {children}
             </div>
-          )}
+          </div>
+          <div className="flex flex-wrap items-start gap-6">
+            {researched && (
+              <div>
+                <Cap>Fit</Cap>
+                <div className="mt-1"><FitBadge score={c.fit_score} size="lg" /></div>
+                <div className="mt-1 text-[12px] font-medium text-ink-3">{cat.label}{c.fit_score != null ? ` · ${cat.range}` : ""}</div>
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {researched && !researching && <Link href={`/outreach?company=${c.id}`} className={btnPrimary}><PenLine className="h-3.5 w-3.5" /> Prepare outreach</Link>}
+              <div className="flex gap-2">
+                <ResearchButton id={c.id} name={c.company_name} label={researched ? "Refresh research" : "Run research"} primary={!researched} />
+                {researched && !researching && <Link href={`/brief/${c.id}`} className={btnSecondary} aria-label="Open call brief"><FileText className="h-3.5 w-3.5" /> Brief</Link>}
+                <RemoveCompany id={c.id} name={c.company_name} redirect="/accounts" variant="ghost" />
+              </div>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="mt-5"><AccountTabs id={c.id} notes={notes.length} /></div>
+
+      <div className="mt-5">
+        {researching ? (
+          <div className="rounded-xl border border-line bg-panel p-6">
+            <Cap>Researching · GitHub · website · job boards · engineering blog · fit analysis</Cap>
+            <div className="mt-5 space-y-3.5">{[62, 88, 48, 74, 56].map((w, i) => <div key={i} className="skel h-3" style={{ width: `${w}%` }} />)}</div>
+            <p className="mt-5 text-sm text-ink-3">This takes about 20 seconds. The page updates by itself.</p>
+          </div>
+        ) : !researched ? (
+          <div className="space-y-4 rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--line-ctl)" }}>
+            {c.status === "error" && c.error && <Banner tone="bad">Last run failed: {c.error}</Banner>}
+            <h2 className="text-lg font-semibold">Not researched yet</h2>
+            <p className="mx-auto max-w-md text-sm text-ink-3">Collects public signals from {c.domain}, its GitHub organization, job boards and engineering blog, then scores fit with your product.</p>
+            <div className="flex justify-center"><ResearchButton id={c.id} name={c.company_name} label="Run research" primary /></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {c.status === "error" && (
+              <Banner tone="bad">Last refresh failed: {c.error ?? "unknown error"} Showing data from {fmtDate(c.last_updated!)}.</Banner>
+            )}
+            {stale && <Banner tone="warn">Research is {daysSince(c.last_updated!)} days old (stale after {STALE_DAYS}). The weekly refresh runs {nextRunLabel()}, or refresh now.</Banner>}
+            {children}
+          </div>
+        )}
       </div>
     </div>
   );

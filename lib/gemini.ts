@@ -13,6 +13,8 @@ export type Intel = {
   activity_notes: string;
   summary: string;
   outreach_hook: string;
+  hook_signal: string;
+  hook_source: Source;
 };
 
 const str = { type: "string" };
@@ -59,6 +61,8 @@ const schema: JsonSchema = obj({
   activity_notes: { ...str, description: "One sentence justifying the level with concrete numbers" },
   summary: { ...str, description: "Exactly two paragraphs separated by a blank line" },
   outreach_hook: { ...str, description: "One sentence, the opening line of a cold email" },
+  hook_signal: { ...str, description: "The specific, verifiable engineering observation (number-first) that the opening line is built on" },
+  hook_source: { type: "string", enum: SOURCES, description: "Where that observation came from" },
 });
 
 export async function analyzeCompany(name: string, domain: string, signals: Signals): Promise<Intel> {
@@ -88,6 +92,7 @@ Produce:
 - open_questions: exactly 3 discovery questions that the evidence cannot answer.
 - activity_level + activity_notes: justified with repos pushed in 90 days, repo count and open engineering roles (cite notable titles). If there is no hiring data, say so.
 - summary: exactly two paragraphs. P1: what they build and how. P2: what the activity implies and which evidence gaps the AE should probe.
+- hook_signal / hook_source: the exact engineering observation the opening line relies on and where it came from (github, website, jobs, blog). It must be directly supported by the evidence.
 - outreach_hook: ONE specific opening sentence, STRICT maximum 28 words, referencing a concrete detail from the evidence${pitch ? " and connecting it to what we sell" : ""}. No greetings, no "I came across", no flattery.`;
 
   const text = await generate(prompt, { temperature: 0.5, schema, effort: "low" });
@@ -111,6 +116,7 @@ function sanitize(out: Intel, s: Signals, hasPitch: boolean): Intel {
       : [],
     open_questions: (out.open_questions ?? []).slice(0, 3),
     architecture: out.architecture ? fix(out.architecture) : undefined,
+    hook_source: have[out.hook_source] ? out.hook_source : ("none" as Source),
   };
 }
 

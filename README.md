@@ -16,7 +16,7 @@ For every company on the watchlist the system collects **live public signals**, 
 | Non-template first line for outreach | Gemini, one sentence referencing a concrete detail; over-long openers are auto-rewritten |
 | Relevant in cloud / microservices / language contexts | **ICP checklist** per account (targets configurable via env) |
 | Refreshed weekly | Vercel Cron, Mondays 06:00 UTC; "stale" means more than 7 days |
-| Add / remove companies without touching code | UI form and remove button, or edit `target_companies` directly in Postgres |
+| Add / remove companies without touching code | "Add company" / "Research a company" dialogs and a confirmed remove, or edit `target_companies` directly in Postgres |
 | All AI on Gemini Flash | Only `google/gemini-3.8-flash` (fallback `google/gemini-3.7-flash`) is called, via OpenRouter restricted to Google's own providers (`google-vertex`, `google-ai-studio`, no fallbacks); or the Gemini API directly. No other vendor's model is used |
 
 ### Evidence rules
@@ -33,10 +33,14 @@ Vercel Cron (weekly) → collector for stale / failed accounts
 Full diagram and component table: [docs/COMPONENTS_MAP.md](./docs/COMPONENTS_MAP.md).
 
 ## Screens
-- **Dashboard:** KPI strip, fit distribution, signal coverage, priority accounts (sorted by ICP match, then fit), insights.
-- **Accounts:** the full watchlist.
-- **Account → Overview / Tech stack / Notes & research:** engineering environment, fit mapping, technology inventory (confirmed vs inferred), research sources, notes.
-- Loading, empty, stale, error and missing-evidence states; light and dark themes.
+A persistent sidebar links five workspaces, plus a global company search and profile menu.
+- **Overview:** the command centre. One hero metric (strong ICP matches), "Ready for your next call" (top accounts with an evidence-backed reason), fit distribution, signal-coverage summary, computed insights and recent research activity.
+- **Accounts:** the watchlist. Search, saved views, filters (ICP match, fit range, status, freshness, cloud, language), sorting, bulk refresh/remove, and add/remove companies. All filter state lives in the URL.
+- **Account Intelligence:** a research dossier per company: engineering context, "why this account fits" (ICP criteria with evidence and gaps), an interactive technology map with logos and source evidence, engineering activity, the suggested opening line (regenerate/copy), open questions, and research history. A second tab holds sources and notes.
+- **Research & Signals:** coverage across the watchlist (account × signal matrix), accounts missing fit evidence, accounts needing a refresh, and a chronological refresh log.
+- **Outreach Studio:** pick a company, review its context and the observations the line could rest on, then generate, regenerate and copy an evidence-backed opening line.
+- **Settings:** edit the ICP cloud and language targets (saved to the database); read-only status for the schedule and integrations.
+- Dark theme by default with a light option; responsive down to phone width; loading, empty, stale, error and missing-evidence states throughout.
 
 ## Run locally
 ```bash

@@ -1,37 +1,40 @@
-import { AddCompanyButton } from "@/components/AddCompany";
-import { AutoRefresh } from "@/components/ResearchButton";
+import { Suspense } from "react";
+import { AddCompanyButtons } from "@/components/AddCompany";
+import AccountsFilters from "@/components/AccountsFilters";
 import AccountsTable from "@/components/AccountsTable";
-import FilterPills from "@/components/FilterPills";
-import { Banner } from "@/components/ui";
+import { AutoRefresh } from "@/components/ResearchButton";
+import { Banner, EmptyState, PageHeader } from "@/components/ui";
+import { toRow, queryRows, viewCounts, type Query } from "@/lib/accounts";
 import { dbConfigured, listCompanies } from "@/lib/db";
-import { applyFilter, parseFilter } from "@/lib/filters";
-import { matchCount } from "@/lib/checklist";
+import { loadIcp } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
-export default async function Accounts({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
+export default async function Accounts({ searchParams }: { searchParams: Promise<Query> }) {
   if (!dbConfigured()) return <Banner tone="bad">DATABASE_URL is not set.</Banner>;
-  const filter = parseFilter((await searchParams).filter);
+  await loadIcp();
+  const query = await searchParams;
   const all = await listCompanies();
-  const sorted = [...all].sort((a, b) => matchCount(b) - matchCount(a) || (b.fit_score ?? -1) - (a.fit_score ?? -1) || a.company_name.localeCompare(b.company_name));
-  const rows = applyFilter(sorted, filter);
+  const rows = all.map(toRow);
+  const shown = queryRows(rows, query);
+  const uniq = (f: (r: (typeof rows)[number]) => string) => [...new Set(rows.map(f).filter((v) => v && v !== "—"))].sort();
+
   return (
-    <div className="space-y-5">
-      <AutoRefresh active={all.some((c) => c.status === "researching")} />
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.03em]">Accounts</h1>
-          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-cap">{rows.length} of {all.length} shown · sorted by ICP match, then fit score</p>
-        </div>
-        <AddCompanyButton />
-      </div>
-      {all.length > 0 && <FilterPills rows={sorted} active={filter} />}
-      {all.length === 0 ? (
-        <p className="text-sm text-ink-3">No accounts yet. Use “Research a company”.</p>
-      ) : rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-8 text-sm text-ink-3" style={{ borderColor: "var(--line-ctl)" }}>No accounts match this filter.</p>
+    <div>
+      <AutoRefresh active={rows.some((r) => r.status === "researching")} />
+      <PageHeader title="Accounts" subtitle="The companies you're watching. Research refreshes weekly, and you can refresh any account on demand."
+        meta={<span>{rows.length} monitored companies</span>} actions={<AddCompanyButtons />} />
+      {rows.length === 0 ? (
+        <EmptyState title="Your watchlist is empty" action={<div className="flex gap-2"><AddCompanyButtons /></div>}>Add companies you plan to contact. Stack Scout will gather their public engineering signals.</EmptyState>
       ) : (
-        <AccountsTable rows={rows} />
+        <div className="space-y-4">
+          <Suspense fallback={<div className="skel h-24" />}>
+            <AccountsFilters counts={viewCounts(rows)} clouds={uniq((r) => r.cloud)} languages={uniq((r) => r.language)} total={rows.length} shown={shown.length} />
+          </Suspense>
+          {shown.length === 0
+            ? <EmptyState title="No accounts match these filters">Try removing a filter, or use “Clear all filters”.</EmptyState>
+            : <AccountsTable rows={shown} />}
+        </div>
       )}
     </div>
   );

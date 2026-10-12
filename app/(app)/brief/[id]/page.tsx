@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { ChecklistStrip } from "@/components/Checklist";
+import { IcpStrip } from "@/components/Icp";
 import { CopyButton } from "@/components/CopyButton";
 import { PrintButton } from "@/components/PrintButton";
 import { Cap } from "@/components/ui";
@@ -9,6 +9,7 @@ import { getAccount } from "@/lib/account";
 import { checklist } from "@/lib/checklist";
 import { SOURCE_LABEL, daysSince, facts, fmtDateYear, hasData, isStale } from "@/lib/derive";
 import { productName } from "@/lib/product";
+import { loadIcp } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function CallBrief({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
+  await loadIcp();
   const c = await getAccount(id);
   if (!c) notFound();
   if (!hasData(c)) {
@@ -69,7 +71,7 @@ export default async function CallBrief({ params }: { params: Promise<{ id: stri
 
       <section>
         <h2 className="mb-2 text-base font-bold">Is this account relevant?</h2>
-        <ChecklistStrip checks={checks} />
+        <IcpStrip checks={checks} />
       </section>
 
       <section>

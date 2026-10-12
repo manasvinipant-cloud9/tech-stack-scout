@@ -3,31 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function AccountTabs({ id, counts }: { id: number; counts: { stack: number; notes: number } }) {
+export default function AccountTabs({ id, notes }: { id: number; notes: number }) {
   const path = usePathname();
   const base = `/accounts/${id}`;
   const tabs = [
-    { href: base, label: "Overview", count: null },
-    { href: `${base}/stack`, label: "Tech stack", count: counts.stack },
-    { href: `${base}/notes`, label: "Notes & research", count: counts.notes },
+    { href: base, label: "Intelligence", on: path === base },
+    { href: `${base}/notes`, label: "Evidence & notes", on: path.startsWith(`${base}/notes`), count: notes },
   ];
   return (
-    <div className="flex gap-1 overflow-x-auto">
-      {tabs.map((t) => {
-        const active = t.href === base ? path === base : path.startsWith(t.href);
-        return (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`-mb-px whitespace-nowrap rounded-t-[10px] border px-4 py-2.5 text-sm transition-colors duration-100 ${
-              active ? "border-line border-b-panel bg-panel font-semibold text-ink" : "border-transparent text-ink-3 hover:text-ink"
-            }`}
-          >
-            {t.label}
-            {t.count != null && <span className="ml-1.5 font-mono text-[11px] text-ink-5">{t.count}</span>}
-          </Link>
-        );
-      })}
-    </div>
+    <nav className="flex gap-1 border-b border-line" aria-label="Account sections">
+      {tabs.map((t) => (
+        <Link key={t.href} href={t.href} aria-current={t.on ? "page" : undefined}
+          className={`-mb-px border-b-2 px-3.5 py-2.5 text-[13.5px] transition-colors ${t.on ? "border-accent font-semibold text-ink" : "border-transparent text-ink-3 hover:text-ink"}`}>
+          {t.label}{t.count ? <span className="ml-1.5 font-mono text-[11px] text-ink-4">{t.count}</span> : null}
+        </Link>
+      ))}
+    </nav>
   );
 }
