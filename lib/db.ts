@@ -1,4 +1,6 @@
 import { neon } from "@neondatabase/serverless";
+import type { Analysis } from "./types";
+import type { Signals } from "./signals";
 
 export type Company = {
   id: number;
@@ -16,8 +18,13 @@ export type Company = {
   summary: string | null;
   outreach_hook: string | null;
   error: string | null;
+  fit_score: number | null;
+  analysis: Analysis | null;
+  signals: Signals | null;
   created_at: string;
 };
+
+export type Note = { id: number; company_id: number; text: string; tags: string[]; created_at: string };
 
 export const dbConfigured = () => Boolean(process.env.DATABASE_URL);
 
@@ -53,6 +60,16 @@ export function ensureSchema() {
       )`;
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_roles INTEGER`;
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_source TEXT`;
+    await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS fit_score INTEGER`;
+    await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS analysis JSONB`;
+    await sql()`
+      CREATE TABLE IF NOT EXISTS account_notes (
+        id         SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL REFERENCES target_companies(id) ON DELETE CASCADE,
+        text       TEXT NOT NULL,
+        tags       JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
   })().catch((e) => {
     schemaReady = null;
     throw e;
@@ -61,7 +78,7 @@ export function ensureSchema() {
 }
 
 const COLS = `id, company_name, domain, github_org, status, last_updated, languages,
-  infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, created_at`;
+  infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, fit_score, analysis, signals, created_at`;
 
 const toCompany = (r: Record<string, unknown>) => r as unknown as Company;
 
@@ -113,6 +130,8 @@ export async function saveIntel(
     summary: string;
     outreachHook: string;
     signals: unknown;
+    fitScore: number | null;
+    analysis: Analysis;
   }
 ) {
   await sql().query(
@@ -122,10 +141,11 @@ export async function saveIntel(
        languages = $3::jsonb, infrastructure = $4::jsonb,
        activity_level = $5, activity_notes = $6, summary = $7,
        outreach_hook = $8, signals = $9::jsonb,
-       hiring_roles = $10, hiring_source = $11
+       hiring_roles = $10, hiring_source = $11,
+       fit_score = $12, analysis = $13::jsonb
      WHERE id = $1`,
     [id, d.githubOrg, JSON.stringify(d.languages), JSON.stringify(d.infrastructure),
-     d.activityLevel, d.activityNotes, d.summary, d.outreachHook, JSON.stringify(d.signals), d.hiringRoles, d.hiringSource]
+     d.activityLevel, d.activityNotes, d.summary, d.outreachHook, JSON.stringify(d.signals), d.hiringRoles, d.hiringSource, d.fitScore, JSON.stringify(d.analysis)]
   );
 }
 
@@ -139,4 +159,22 @@ export async function listStale(limit: number): Promise<Company[]> {
     [limit]
   )) as Record<string, unknown>[];
   return rows.map(toCompany);
+}
+
+export async function listNotes(companyId: number): Promise<Note[]> {
+  await ensureSchema();
+  return (await sql().query(
+    `SELECT id, company_id, text, tags, created_at FROM account_notes WHERE company_id = $1 ORDER BY created_at DESC`,
+    [companyId]
+  )) as unknown as Note[];
+}
+
+export async function addNote(companyId: number, text: string, tags: string[]): Promise<Note> {
+  await ensureSchema();
+  const rows = (await sql().query(
+    `INSERT INTO account_notes (company_id, text, tags) VALUES ($1, $2, $3::jsonb)
+     RETURNING id, company_id, text, tags, created_at`,
+    [companyId, text, JSON.stringify(tags)]
+  )) as unknown as Note[];
+  return rows[0];
 }

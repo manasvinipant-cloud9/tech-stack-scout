@@ -2,9 +2,56 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* "Field Ledger" tokens. Light values come from the design handoff; dark values are derived from the same palette. */
+:root {
+  --page: #f4efe6; --panel: #fbf8f2; --sunken: #efe8da; --thead: #f1ebdf; --chip: #eae2d3; --surface: #ffffff;
+  --hover: #f4efe6;
+  --line: #dccfb8; --line-soft: #e7decf; --line-ctl: #cdbfa6; --dashed: #a39a88;
+  --ink: #1c2420; --ink-2: #3b4540; --ink-3: #5c6660; --ink-4: #8c938d; --ink-5: #a39a88; --cap: #8c7a58;
+  --accent: #1f4d3a; --btn: #1f4d3a; --deep: #1f3b2d; --deep-line: #2f5240; --lime: #cfe3b4;
+  --dark-text: #e9f0ea; --dark-meta: #9db8a6;
+  --good: #2f7d4f; --good-dot: #2f8f5b; --good-bg: #e3ede6;
+  --warn: #7a4f0e; --warn-bg: #f6e7c4; --warn-line: #c9a45c;
+  --bad: #b4442f; --bad-bg: #f8e3dc; --bad-text: #8e2f1c; --brown: #6b5a3a;
+  --hdr: #1f3b2d; --hdr-text: #e9f0ea; --hdr-dim: #a9c2b1; --hdr-field: #2a4a3a;
+  --skel: #e7decf;
+}
+.dark {
+  --page: #0f1511; --panel: #151d18; --sunken: #1a251f; --thead: #18221c; --chip: #22302a; --surface: #121a15;
+  --hover: #1a251f;
+  --line: #2a3a31; --line-soft: #223029; --line-ctl: #34473c; --dashed: #5b6b60;
+  --ink: #e6ede8; --ink-2: #c3cec7; --ink-3: #9daaa2; --ink-4: #7c8a82; --ink-5: #66756c; --cap: #b09f78;
+  --accent: #7fcb9a; --btn: #2f7d4f; --deep: #1a3327; --deep-line: #2f5240; --lime: #cfe3b4;
+  --dark-text: #e9f0ea; --dark-meta: #9db8a6;
+  --good: #6fcf97; --good-dot: #3fa56b; --good-bg: #1d3a2a;
+  --warn: #e3b560; --warn-bg: #3a2f14; --warn-line: #8a6d2f;
+  --bad: #ef8a73; --bad-bg: #3a1f19; --bad-text: #f2a592; --brown: #c4b085;
+  --hdr: #0b130e; --hdr-text: #e9f0ea; --hdr-dim: #8fa89a; --hdr-field: #1a2a21;
+  --skel: #223029;
+}
+
+@theme inline {
+  --color-page: var(--page); --color-panel: var(--panel); --color-sunken: var(--sunken); --color-thead: var(--thead);
+  --color-chip: var(--chip); --color-surface: var(--surface); --color-hover: var(--hover);
+  --color-line: var(--line); --color-line-soft: var(--line-soft); --color-line-ctl: var(--line-ctl); --color-dashed: var(--dashed);
+  --color-ink: var(--ink); --color-ink-2: var(--ink-2); --color-ink-3: var(--ink-3); --color-ink-4: var(--ink-4); --color-ink-5: var(--ink-5);
+  --color-cap: var(--cap); --color-accent: var(--accent); --color-btn: var(--btn); --color-deep: var(--deep); --color-deep-line: var(--deep-line);
+  --color-lime: var(--lime); --color-dark-text: var(--dark-text); --color-dark-meta: var(--dark-meta);
+  --color-good: var(--good); --color-good-dot: var(--good-dot); --color-good-bg: var(--good-bg);
+  --color-warn: var(--warn); --color-warn-bg: var(--warn-bg); --color-warn-line: var(--warn-line);
+  --color-bad: var(--bad); --color-bad-bg: var(--bad-bg); --color-bad-text: var(--bad-text); --color-brown: var(--brown);
+  --color-hdr: var(--hdr); --color-hdr-text: var(--hdr-text); --color-hdr-dim: var(--hdr-dim); --color-hdr-field: var(--hdr-field);
+  --color-skel: var(--skel);
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+}
+
 @layer base {
   html { color-scheme: light; }
   html.dark { color-scheme: dark; }
+  body { @apply bg-page font-sans text-ink antialiased; font-variant-numeric: tabular-nums; }
+  a.link { @apply text-accent underline decoration-line decoration-1 underline-offset-[3px] transition-colors duration-100 hover:decoration-accent; }
 }
 
-body { @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100; }
+@keyframes pulse-skel { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+.skel { background: var(--skel); border-radius: 6px; animation: pulse-skel 1.4s ease-in-out infinite; }
