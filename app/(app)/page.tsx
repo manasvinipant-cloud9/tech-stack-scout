@@ -4,6 +4,7 @@ import { AddCompanyButtons } from "@/components/AddCompany";
 import { IcpIndicators } from "@/components/Icp";
 import { CompanyLogo } from "@/components/Logos";
 import { AutoRefresh } from "@/components/ResearchButton";
+import { BarList, FitActivityScatter } from "@/components/charts";
 import { Banner, Cap, EmptyState, FIT_COLOR, FitBadge, PageHeader, Panel, SectionHeader, StackBar, StatusPill, btnPrimary, btnSecondary } from "@/components/ui";
 import { toRow } from "@/lib/accounts";
 import { actionLabel, buildNextActions, type ActionKind } from "@/lib/actions";
@@ -12,7 +13,7 @@ import { dbConfigured, listCompanies, listRuns, type Company, type ResearchRun }
 import { FIT_CATEGORIES, fmtDate, relativeTime, staleDays } from "@/lib/derive";
 import { buildInsights, type InsightKind } from "@/lib/insights";
 import { nextRunLabel } from "@/lib/schedule";
-import { loadSettings } from "@/lib/settings";
+import { currentIcp, loadSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,21 @@ export default async function Overview() {
   const lastRun = researched.map((r) => r.lastUpdated!).sort().pop();
 
   const actions = buildNextActions(all, 6);
+  // Watchlist landscape: what the researched accounts run on, against the ICP targets.
+  const icp = currentIcp();
+  const tally = (get: (r: (typeof rows)[number]) => string, targets: string[], param: string) => {
+    const m = new Map<string, number>();
+    researched.forEach((r) => { const k = get(r); m.set(k, (m.get(k) ?? 0) + 1); });
+    const isT = (k: string) => targets.some((t) => t.toLowerCase() === k.toLowerCase());
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, v]) => ({
+      label: k === "—" ? "Not found" : k, value: v, muted: k === "—", note: isT(k) ? "target" : undefined,
+      color: k === "—" ? "var(--line-ctl)" : isT(k) ? "var(--good-dot)" : "#6c8fb0", href: k === "—" ? undefined : `/accounts?${param}=${encodeURIComponent(k)}`,
+    }));
+  };
+  const cloudMix = tally((r) => r.cloud, icp.clouds, "cloud");
+  const langMix = tally((r) => r.language, icp.languages, "lang");
+  const plottable = researched.filter((r) => r.fit != null && r.roles != null);
+  const dots = plottable.map((r) => ({ id: r.id, name: r.name, x: r.roles!, y: r.fit!, match: r.match }));
   const total = rows.length;
   const dist = FIT_CATEGORIES.map((c) => ({ ...c, n: rows.filter((r) => r.fitCat === c.key).length }));
   const maxDist = Math.max(1, ...dist.map((d) => d.n));
@@ -239,6 +255,22 @@ export default async function Overview() {
           </Panel>
         </section>
         </div>
+
+        {/* Landscape: what the watchlist looks like against the ICP */}
+        <section className="xl:col-span-4">
+          <SectionHeader title="Cloud platforms" hint={`${researched.length} researched`} />
+          <Panel className="p-4"><BarList items={cloudMix} total={researched.length} emptyLabel="No cloud platforms identified yet" />
+            <p className="mt-3 border-t border-line-soft pt-2.5 text-[11px] leading-snug text-ink-4">Each account&apos;s primary cloud. Green bars are your ICP targets ({icp.clouds.join(", ")}). “Not found” is not proof of absence.</p></Panel>
+        </section>
+        <section className="xl:col-span-3">
+          <SectionHeader title="Primary languages" hint="by public code" />
+          <Panel className="p-4"><BarList items={langMix} total={researched.length} emptyLabel="No languages identified yet" />
+            <p className="mt-3 border-t border-line-soft pt-2.5 text-[11px] leading-snug text-ink-4">Docs and markup are excluded. Green = ICP target.</p></Panel>
+        </section>
+        <section className="xl:col-span-5">
+          <SectionHeader title="Fit vs engineering activity" hint="Which high-fit accounts are hiring?" />
+          <Panel className="p-4"><FitActivityScatter dots={dots} xLabel="Open engineering roles" footnote={`${plottable.length} of ${researched.length} researched accounts plotted. ${researched.length - plottable.length} have no public job board, so their hiring is unknown (not zero).`} /></Panel>
+        </section>
       </div>
     </div>
   );

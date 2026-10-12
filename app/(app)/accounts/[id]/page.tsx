@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CircleDashed, ExternalLink } from "lucide-react";
+import { ShareBar } from "@/components/charts";
 import { Disclosure } from "@/components/Disclosure";
 import { IcpLegend, StatusGlyph, STATUS_TEXT } from "@/components/Icp";
 import OpeningLine from "@/components/OpeningLine";
@@ -116,6 +117,7 @@ export default async function Intelligence({ params }: { params: Promise<{ id: s
         <section>
           <SectionHeader title="Technology map" hint="Select a technology to see its evidence" />
           <Panel className="p-5">
+            {langShare(c).length > 0 && <div className="mb-5 border-b border-line-soft pb-5"><div className="mb-2 text-[13px] font-semibold">Language share <span className="font-normal text-ink-4">· of public code, docs and markup excluded</span></div><ShareBar parts={langShare(c)} /></div>}
             <TechMap techs={a?.technologies ?? []} shares={langShare(c)} links={linkMap} verified={fmtDate(c.last_updated)} stale={stale} />
           </Panel>
         </section>

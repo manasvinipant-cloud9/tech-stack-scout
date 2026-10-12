@@ -30,8 +30,17 @@ export function langShare(c: Company): { name: string; pct: number }[] {
 
 export const primaryLanguage = (c: Company) => langShare(c)[0]?.name ?? "—";
 const known = (v?: string) => (v && !/^unknown$/i.test(v.trim()) ? v : null);
+/** One name per cloud, so "Google Cloud", "GCP" and "Google Cloud Platform" count as the same thing in filters and charts. */
+export function canonCloud(name: string): string {
+  const n = name.trim();
+  if (/^(aws|amazon web services|amazon aws)\b/i.test(n)) return "AWS";
+  if (/^(gcp|google cloud|google cloud platform)\b/i.test(n)) return "GCP";
+  if (/^(azure|microsoft azure)\b/i.test(n)) return "Azure";
+  if (/^oracle/i.test(n)) return "Oracle Cloud";
+  return n;
+}
 // The model sometimes answers "Unknown" even though its own inventory lists a cloud/orchestration tool; fall back to that.
-export const cloudOf = (c: Company) => known(c.analysis?.cloud) ?? c.analysis?.technologies.find((t) => t.category === "Cloud")?.name ?? "—";
+export const cloudOf = (c: Company) => { const v = known(c.analysis?.cloud) ?? c.analysis?.technologies.find((t) => t.category === "Cloud")?.name; return v ? canonCloud(v) : "—"; };
 export const orchOf = (c: Company) => known(c.analysis?.orchestration) ?? c.analysis?.technologies.find((t) => t.category === "Orchestration")?.name ?? "—";
 export const reposActive = (c: Company) => c.signals?.github?.reposPushedLast90d ?? null;
 

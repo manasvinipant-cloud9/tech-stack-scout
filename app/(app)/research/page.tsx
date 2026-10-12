@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Check, CircleDashed, Minus, X } from "lucide-react";
+import { BarList } from "@/components/charts";
 import { CompanyLogo } from "@/components/Logos";
 import { RefreshIcon, RefreshMany, AutoRefresh } from "@/components/ResearchButton";
 import { Banner, Cap, EmptyState, PageHeader, Panel, SectionHeader, StatusPill } from "@/components/ui";
@@ -62,6 +63,19 @@ export default async function Research() {
           return s.href ? <Link key={s.label} href={s.href} className="rounded-xl border border-line bg-panel p-4 shadow-card transition-colors hover:border-line-ctl">{body}</Link> : <div key={s.label} className="rounded-xl border border-line bg-panel p-4 shadow-card">{body}</div>;
         })}
       </div>
+
+      <section className="mb-6">
+        <SectionHeader title="Research freshness" hint="How old the intelligence is across the watchlist" />
+        <Panel className="p-4">
+          <BarList total={all.length} items={[
+            { label: "Today", value: researched.filter((c) => daysSince(c.last_updated!) === 0 && !isStale(c)).length, href: "/accounts?fresh=fresh" },
+            { label: "1 to 3 days", value: researched.filter((c) => { const d = daysSince(c.last_updated!); return d >= 1 && d <= 3 && !isStale(c); }).length, href: "/accounts?fresh=fresh" },
+            { label: "4 days or more", value: researched.filter((c) => daysSince(c.last_updated!) >= 4 && !isStale(c)).length, href: "/accounts?fresh=fresh", color: "#7fb8a0" },
+            { label: `Stale (> ${staleDays()}d)`, value: stale.length, href: "/accounts?fresh=stale", color: "var(--warn-line)" },
+            { label: "Never researched", value: awaiting.length + failed.filter((c) => !hasData(c)).length, href: "/accounts?fresh=never", color: "var(--line-ctl)", muted: true },
+          ]} />
+        </Panel>
+      </section>
 
       <section className="mb-6">
         <SectionHeader title="Signal coverage matrix" hint="Every account by every signal, least complete first" />
