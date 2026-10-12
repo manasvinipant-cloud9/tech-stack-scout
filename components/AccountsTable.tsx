@@ -3,7 +3,7 @@ import type { Company } from "@/lib/db";
 import { cloudOf, daysSince, fmtDate, hasData, isStale, orchOf, primaryLanguage, reposActive, unsourcedCount } from "@/lib/derive";
 import { FitNumber, StaleChip } from "./ui";
 
-export const COLS = "24px minmax(0,1.5fr) 60px 64px 130px 100px 64px 72px 84px minmax(0,1.1fr)";
+export const COLS = "24px minmax(0,1.5fr) 60px 96px 120px 100px 64px 72px 84px minmax(0,1.1fr)";
 const head = ["#", "ACCOUNT", "FIT", "CLOUD", "ORCH.", "LANGUAGE", "ENG ROLES", "REPOS 90D", "RESEARCHED", "NEXT ACTION"];
 
 function nextAction(c: Company): { text: string; cls: string } {
@@ -42,7 +42,7 @@ export default function AccountsTable({ rows }: { rows: Company[] }) {
                 <span className="block truncate text-[11px] text-ink-3">{[c.domain, act, c.hiring_roles != null && `${c.hiring_roles} eng roles`].filter(Boolean).join(" · ")}</span>
               </span>
               <FitNumber n={c.fit_score} />
-              <span className="font-mono text-xs">{cloudOf(c)}</span>
+              <span className="truncate font-mono text-xs">{cloudOf(c)}</span>
               <span className="truncate font-mono text-xs">{orchOf(c)}</span>
               <span className="truncate font-mono text-xs">{primaryLanguage(c)}</span>
               <span>{c.hiring_roles ?? "—"}</span>

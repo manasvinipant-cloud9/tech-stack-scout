@@ -12,8 +12,11 @@ export const hasData = (c: Company) => Boolean(c.last_updated);
 export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 export const fmtDateYear = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
+// Docs, markup and glue are not what a team "builds in"; exclude them from the language share.
+const NOT_CODE = new Set(["MDX", "Markdown", "HTML", "CSS", "SCSS", "Shell", "Dockerfile", "Makefile", "Jupyter Notebook", "Nix", "PowerShell", "Batchfile"]);
+
 export function langShare(c: Company): { name: string; pct: number }[] {
-  const bytes = c.signals?.github?.languageBytes ?? {};
+  const bytes = Object.fromEntries(Object.entries(c.signals?.github?.languageBytes ?? {}).filter(([l]) => !NOT_CODE.has(l)));
   const total = Object.values(bytes).reduce((a, b) => a + b, 0);
   if (!total) return [];
   const sorted = Object.entries(bytes).sort((a, b) => b[1] - a[1]);
@@ -23,8 +26,10 @@ export function langShare(c: Company): { name: string; pct: number }[] {
 }
 
 export const primaryLanguage = (c: Company) => langShare(c)[0]?.name ?? "—";
-export const cloudOf = (c: Company) => (c.analysis?.cloud && c.analysis.cloud !== "Unknown" ? c.analysis.cloud : "—");
-export const orchOf = (c: Company) => (c.analysis?.orchestration && c.analysis.orchestration !== "Unknown" ? c.analysis.orchestration : "—");
+const known = (v?: string) => (v && !/^unknown$/i.test(v.trim()) ? v : null);
+// The model sometimes answers "Unknown" even though its own inventory lists a cloud/orchestration tool; fall back to that.
+export const cloudOf = (c: Company) => known(c.analysis?.cloud) ?? c.analysis?.technologies.find((t) => t.category === "Cloud")?.name ?? "—";
+export const orchOf = (c: Company) => known(c.analysis?.orchestration) ?? c.analysis?.technologies.find((t) => t.category === "Orchestration")?.name ?? "—";
 export const reposActive = (c: Company) => c.signals?.github?.reposPushedLast90d ?? null;
 
 export const sourcedCount = (c: Company) => c.analysis?.fit_reasons.filter((r) => r.source !== "none").length ?? 0;

@@ -158,7 +158,7 @@ export default async function Dashboard() {
             {top ? (
               <div className="py-3 first:pt-0">
                 <div className="text-[15px] font-bold">Opportunity · {top.company_name} · fit {top.fit_score}</div>
-                <p className="mt-1 text-[13px] text-dark-meta">{sourcedCount(top)} of {top.analysis?.fit_reasons.length ?? 0} fit reasons sourced · {top.hiring_roles ?? 0} open eng roles · {primaryLanguage(top)} primary language.</p>
+                <p className="mt-1 text-[13px] text-dark-meta">{sourcedCount(top)} of {top.analysis?.fit_reasons.length ?? 0} fit reasons sourced · {top.hiring_roles ?? "—"} open eng roles · {primaryLanguage(top)} primary language.</p>
                 <Link href={`/accounts/${top.id}`} className="mt-1.5 inline-block text-[13px] font-semibold text-lime underline underline-offset-[3px]">Open account</Link>
               </div>
             ) : (
@@ -185,7 +185,7 @@ export default async function Dashboard() {
                 <Link href={`/accounts/${c.id}`} className="flex items-center gap-3 py-2.5 hover:opacity-80">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-bold">{c.company_name}</span>
-                    <span className="block truncate text-[13px] text-ink-2">Fit {c.fit_score ?? "—"} · {c.hiring_roles ?? 0} eng roles · {reposActive(c) ?? 0} repos active</span>
+                    <span className="block truncate text-[13px] text-ink-2">Fit {c.fit_score ?? "—"} · {c.hiring_roles ?? "—"} eng roles · {reposActive(c) ?? "—"} repos active</span>
                   </span>
                   <span className="font-mono text-[11px] text-ink-4">{fmtDate(c.last_updated!)}</span>
                 </Link>
