@@ -18,6 +18,7 @@ export type Company = {
   summary: string | null;
   outreach_hook: string | null;
   error: string | null;
+  researching_since?: string | null;
   fit_score: number | null;
   analysis: Analysis | null;
   signals: Signals | null;
@@ -61,6 +62,7 @@ export function ensureSchema() {
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_roles INTEGER`;
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_source TEXT`;
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS fit_score INTEGER`;
+    await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS researching_since TIMESTAMPTZ`;
     await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS analysis JSONB`;
     await sql()`
       CREATE TABLE IF NOT EXISTS account_notes (
@@ -78,11 +80,16 @@ export function ensureSchema() {
 }
 
 const COLS = `id, company_name, domain, github_org, status, last_updated, languages,
-  infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, fit_score, analysis, signals, created_at`;
+  infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, researching_since, fit_score, analysis, signals, created_at`;
 
 /** Rows researched before newer signal fields existed lack them; fill defaults so the UI never crashes on old data. */
 const toCompany = (r: Record<string, unknown>): Company => {
   const c = r as unknown as Company;
+  // A function killed mid-run leaves status "researching" forever; treat anything older than 6 minutes as failed.
+  if (c.status === "researching" && c.researching_since && Date.now() - new Date(c.researching_since).getTime() > 6 * 60_000) {
+    c.status = "error";
+    c.error = "Research timed out. Retry.";
+  }
   if (c.signals?.jobs) {
     const j = c.signals.jobs;
     j.toolMentions ??= [];
@@ -131,7 +138,10 @@ export async function removeCompany(id: number) {
 }
 
 export async function setStatus(id: number, status: Company["status"], error: string | null = null) {
-  await sql().query(`UPDATE target_companies SET status = $2, error = $3 WHERE id = $1`, [id, status, error]);
+  await sql().query(
+    `UPDATE target_companies SET status = $2, error = $3, researching_since = CASE WHEN $2 = 'researching' THEN now() ELSE NULL END WHERE id = $1`,
+    [id, status, error]
+  );
 }
 
 export async function saveIntel(
@@ -172,7 +182,7 @@ export async function listStale(limit: number, days = 7): Promise<Company[]> {
   const rows = (await sql().query(
     `SELECT ${COLS} FROM target_companies
      WHERE (last_updated IS NULL OR last_updated < now() - ($2 || ' days')::interval OR status = 'error')
-       AND status <> 'researching'
+       AND (status <> 'researching' OR researching_since < now() - interval '6 minutes')
      ORDER BY last_updated ASC NULLS FIRST LIMIT $1`,
     [limit, String(days)]
   )) as Record<string, unknown>[];

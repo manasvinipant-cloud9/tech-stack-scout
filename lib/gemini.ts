@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import type { Signals } from "./signals";
 import type { Analysis, FitReason, Source, Tech } from "./types";
 
@@ -108,12 +108,13 @@ Produce:
 
   // Gemini returns 429/500/503 during demand spikes; retry with backoff before giving up.
   let res;
+  const t0 = Date.now();
   for (let attempt = 0; ; attempt++) {
     try {
       res = await ai.models.generateContent({
         model: MODEL(),
         contents: prompt,
-        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5 },
+        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
       });
       break;
     } catch (e) {
@@ -123,6 +124,7 @@ Produce:
       await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
     }
   }
+  console.log(`[gemini] ${name}: ${Date.now() - t0}ms`);
   if (!res.text) throw new Error("Gemini returned an empty response");
   const out = JSON.parse(res.text) as Intel;
   out.outreach_hook = await tightenHook(ai, out.outreach_hook);
@@ -156,7 +158,7 @@ async function tightenHook(ai: GoogleGenAI, hook: string): Promise<string> {
     const r = await ai.models.generateContent({
       model: MODEL(),
       contents: `Rewrite this cold-email opening line in at most 25 words. Keep the most specific concrete detail and the link to the product. Return only the sentence.\n\n${hook}`,
-      config: { temperature: 0.3 },
+      config: { temperature: 0.3, thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
     });
     const t = r.text?.trim().replace(/^["']|["']$/g, "");
     return t && words(t) <= 32 ? t : hook;
