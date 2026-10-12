@@ -114,7 +114,7 @@ Produce:
       res = await ai.models.generateContent({
         model: MODEL(),
         contents: prompt,
-        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
+        config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { timeout: 100_000 } },
       });
       break;
     } catch (e) {
