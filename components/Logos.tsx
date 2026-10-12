@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 
 const mono = (name: string) => name.replace(/[^A-Za-z0-9+#]/g, "").slice(0, 2).toUpperCase() || "?";
 
-/** Company logo from the site's favicon; falls back to a monogram if it can't be loaded. */
+/** Company logo from the site's favicon. A monogram shows until the icon has actually loaded, and stays if it can't. */
 export function CompanyLogo({ name, domain, size = 32 }: { name: string; domain: string; size?: number }) {
-  const [bad, setBad] = useState(false);
+  const [state, setState] = useState<"loading" | "ok" | "bad">("loading");
   return (
-    <span className={`grid shrink-0 place-items-center overflow-hidden rounded-lg border border-line text-[11px] font-bold ${bad ? "bg-chip text-ink-2" : "bg-[#eef3f0]"}`} style={{ width: size, height: size }} aria-hidden>
-      {bad ? mono(name) : (
+    <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-lg border border-line text-[11px] font-bold ${state === "ok" ? "bg-[#eef3f0]" : "bg-chip text-ink-2"}`} style={{ width: size, height: size }} aria-hidden>
+      {state !== "ok" && mono(name)}
+      {state !== "bad" && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" width={size - 8} height={size - 8} loading="lazy" onError={() => setBad(true)} className="rounded-sm" />
+        <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" width={size - 8} height={size - 8}
+          onLoad={(e) => setState((e.currentTarget as HTMLImageElement).naturalWidth > 1 ? "ok" : "bad")} onError={() => setState("bad")}
+          className={`rounded-sm ${state === "ok" ? "" : "absolute opacity-0"}`} />
       )}
     </span>
   );
