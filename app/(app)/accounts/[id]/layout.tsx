@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import AccountTabs from "@/components/AccountTabs";
 import { ChecklistStrip } from "@/components/Checklist";
 import { checklist } from "@/lib/checklist";
 import { AutoRefresh, ResearchButton } from "@/components/ResearchButton";
-import { Banner, Cap, FitNumber } from "@/components/ui";
+import { Banner, Cap, FitNumber, btnSecondary } from "@/components/ui";
 import { getAccount } from "@/lib/account";
 import { listNotes } from "@/lib/db";
 import { daysSince, fmtDate, fmtDateYear, hasData, isStale } from "@/lib/derive";
@@ -60,7 +60,10 @@ export default async function AccountLayout({ children, params }: { children: Re
             <FitNumber n={c.fit_score} size="lg" />
             <div className="mt-1 text-[11px] uppercase tracking-[0.08em] text-ink-3">Fit with {productName()}</div>
           </div>
-          <ResearchButton id={c.id} primary />
+          <div className="flex flex-col gap-2">
+            <ResearchButton id={c.id} primary />
+            {hasData(c) && !researching && <Link href={`/brief/${c.id}`} className={btnSecondary}><FileText className="h-3.5 w-3.5" /> Call brief</Link>}
+          </div>
         </div>
       </div>
 

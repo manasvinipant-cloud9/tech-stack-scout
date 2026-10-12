@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <Header companies={companies} />
       <main className="mx-auto max-w-[1376px] px-4 pb-10 pt-7 sm:px-8">{children}</main>
-      <footer className="mx-auto max-w-[1376px] px-4 pb-8 font-mono text-[11px] uppercase tracking-[0.06em] text-ink-4 sm:px-8">
+      <footer className="mx-auto max-w-[1376px] px-4 pb-8 print:hidden font-mono text-[11px] uppercase tracking-[0.06em] text-ink-4 sm:px-8">
         <Link href="/components-map" className="hover:text-ink">Components map</Link> · Gemini Flash · Neon Postgres · Vercel
       </footer>
     </>

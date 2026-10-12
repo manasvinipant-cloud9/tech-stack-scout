@@ -44,7 +44,7 @@ export default function Header({ companies }: { companies: Item[] }) {
   ];
 
   return (
-    <header className="bg-hdr text-hdr-text">
+    <header className="bg-hdr text-hdr-text print:hidden">
       <div className="mx-auto flex h-14 max-w-[1376px] items-center gap-4 px-4 sm:gap-7 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 text-base font-bold tracking-[-0.02em]">
           <span className="grid h-[26px] w-[26px] place-items-center rounded-full border-2 border-lime">
