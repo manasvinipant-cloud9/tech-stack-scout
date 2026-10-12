@@ -5,9 +5,21 @@ import { AutoRefresh } from "@/components/ResearchButton";
 import AccountsTable from "@/components/AccountsTable";
 import { Banner, Cap, Panel } from "@/components/ui";
 import { dbConfigured, listCompanies, type Company } from "@/lib/db";
-import { daysSince, fmtDate, hasData, isStale, primaryLanguage, reposActive, sourcedCount, unsourcedCount } from "@/lib/derive";
+import { checklist, matchCount } from "@/lib/checklist";
+import { STALE_DAYS, daysSince, fmtDate, hasData, isStale, primaryLanguage, reposActive, sourcedCount, unsourcedCount } from "@/lib/derive";
+import { icp } from "@/lib/icp";
 
 export const dynamic = "force-dynamic";
+
+/** Next Monday 06:00 UTC, matching the cron schedule in vercel.json. */
+function nextRun() {
+  const now = new Date();
+  const d = new Date(now);
+  d.setUTCHours(6, 0, 0, 0);
+  const add = (8 - d.getUTCDay()) % 7 || 7;
+  if (!(d.getUTCDay() === 1 && now < d)) d.setUTCDate(d.getUTCDate() + add);
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
 
 const RAMP = ["#1f4d3a", "#3f7a5a", "#6fa083", "#9dbfa9", "#c9dbcf"];
 
@@ -46,11 +58,11 @@ export default async function Dashboard() {
 
   const kpis = [
     { icon: Building2, label: "Total accounts", value: all.length, note: `${researched.length} researched` },
-    { icon: Target, label: "Strong fit (80+)", value: scored.filter((c) => c.fit_score! >= 80).length, note: `of ${scored.length} scored` },
+    { icon: Target, label: "ICP match (3/3)", value: researched.filter((c) => matchCount(c) === 3).length, note: `of ${researched.length} researched` },
     { icon: Briefcase, label: "Open eng roles", value: roles, note: `${researched.filter((c) => c.hiring_roles != null).length} job boards found` },
     { icon: GitBranch, label: "Repos active 90d", value: repos, note: `${researched.filter((c) => c.signals?.github).length} GitHub orgs found` },
-    { icon: Clock, label: "Stale (>30d)", value: stale.length, note: "need refresh", bad: stale.length > 0 },
-    { icon: Activity, label: "Failed runs", value: failed.length, note: "last research errored", bad: failed.length > 0 },
+    { icon: Activity, label: "Strong fit (80+)", value: scored.filter((c) => c.fit_score! >= 80).length, note: `of ${scored.length} scored` },
+    { icon: Clock, label: `Stale (>${STALE_DAYS}d)`, value: stale.length, note: failed.length ? `${failed.length} failed last run` : "need refresh", bad: stale.length > 0 || failed.length > 0 },
   ];
 
   const bands = [
@@ -66,12 +78,14 @@ export default async function Dashboard() {
     { name: "Hiring found", n: researched.filter((c) => (c.hiring_roles ?? 0) > 0).length },
     { name: "Repository activity", n: researched.filter((c) => (reposActive(c) ?? 0) > 0).length },
     { name: "GitHub org found", n: researched.filter((c) => c.signals?.github).length },
+    { name: "Job descriptions read", n: researched.filter((c) => (c.signals?.jobs?.descriptionsScanned ?? 0) > 0).length },
+    { name: "Engineering blog found", n: researched.filter((c) => c.signals?.blog).length },
     { name: "Website fingerprinted", n: researched.filter((c) => c.signals?.site).length },
     { name: "Stack identified", n: researched.filter((c) => (c.analysis?.technologies.length ?? 0) > 0).length },
   ];
   const sigMax = Math.max(1, ...signalBars.map((s) => s.n));
 
-  const priority = [...all].sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1) || (b.hiring_roles ?? 0) - (a.hiring_roles ?? 0)).slice(0, 7);
+  const priority = [...all].sort((a, b) => matchCount(b) - matchCount(a) || (b.fit_score ?? -1) - (a.fit_score ?? -1) || (b.hiring_roles ?? 0) - (a.hiring_roles ?? 0)).slice(0, 7);
   const top = scored.sort((a, b) => b.fit_score! - a.fit_score!)[0];
   const gaps = all.filter((c) => unsourcedCount(c) > 0);
   const recent = [...researched].sort((a, b) => +new Date(b.last_updated!) - +new Date(a.last_updated!)).slice(0, 6);
@@ -84,7 +98,7 @@ export default async function Dashboard() {
         <div>
           <h1 className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.03em]">Dashboard</h1>
           <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-cap">
-            {all.length} accounts{newest ? ` · last research ${fmtDate(newest)}` : ""}
+            {all.length} accounts{newest ? ` · last research ${fmtDate(newest)}` : ""} · auto-refresh weekly, next {nextRun()}
           </p>
         </div>
         <AddCompanyButton />
@@ -98,7 +112,7 @@ export default async function Dashboard() {
       )}
       {stale.length > 0 && (
         <Banner tone="warn">
-          {stale.length} account{stale.length > 1 ? "s" : ""} last researched &gt;30d ago ({stale.slice(0, 3).map((c) => `${c.company_name} ${daysSince(c.last_updated!)}d`).join(", ")}).
+          {stale.length} account{stale.length > 1 ? "s" : ""} last researched &gt;{STALE_DAYS}d ago ({stale.slice(0, 3).map((c) => `${c.company_name} ${daysSince(c.last_updated!)}d`).join(", ")}).
         </Banner>
       )}
 
@@ -111,6 +125,13 @@ export default async function Dashboard() {
           </div>
         ))}
       </div>
+
+      <p className="text-[13px] text-ink-3">
+        <span className="font-semibold text-ink">ICP match</span> = the three contexts your product is relevant in:
+        <span className="font-mono"> C</span>loud ({icp().clouds.join(" / ")}) ·
+        <span className="font-mono"> M</span>icroservices ·
+        <span className="font-mono"> L</span>anguage ({icp().languages.join(" / ")}). Green = evidenced match, amber = partial, outline = no match, dashed = no evidence.
+      </p>
 
       <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
         <Panel className="p-[18px]">
@@ -132,7 +153,7 @@ export default async function Dashboard() {
           <div className="flex items-baseline gap-3"><h3 className="text-lg font-bold tracking-[-0.01em]">Signal coverage</h3><Cap>of {researched.length} researched</Cap></div>
           <div className="mt-3 space-y-2">
             {signalBars.map((s) => (
-              <div key={s.name} className="grid grid-cols-[150px_1fr_24px] items-center gap-3 text-[13px]">
+              <div key={s.name} className="grid grid-cols-[170px_1fr_24px] items-center gap-3 text-[13px]">
                 <span className="text-ink-2">{s.name}</span>
                 <span className="h-2 rounded-full bg-chip"><span className="block h-2 rounded-full bg-accent" style={{ width: `${(s.n / sigMax) * 100}%` }} /></span>
                 <span className="text-right font-semibold">{s.n}</span>
@@ -145,7 +166,7 @@ export default async function Dashboard() {
       <Panel className="p-[18px]">
         <div className="mb-3 flex flex-wrap items-baseline gap-3">
           <h3 className="text-lg font-bold tracking-[-0.01em]">Priority accounts</h3>
-          <span className="text-[13px] text-ink-3">sorted by fit score · {priority.length} of {all.length}</span>
+          <span className="text-[13px] text-ink-3">sorted by ICP match, then fit score · {priority.length} of {all.length}</span>
           <Link href="/accounts" className="link ml-auto text-[13px] font-semibold">View all</Link>
         </div>
         <AccountsTable rows={priority} />
@@ -173,7 +194,7 @@ export default async function Dashboard() {
             </div>
             <div className="py-3 last:pb-0">
               <div className="text-[15px] font-bold">Risk · {stale.length} stale · {failed.length} failed</div>
-              <p className="mt-1 text-[13px] text-dark-meta">{stale.length + failed.length ? "Re-research these accounts before relying on their numbers." : "All research is under 30 days old."}</p>
+              <p className="mt-1 text-[13px] text-dark-meta">{stale.length + failed.length ? "Re-research these accounts before relying on their numbers." : "All research is under 7 days old."}</p>
             </div>
           </div>
         </section>

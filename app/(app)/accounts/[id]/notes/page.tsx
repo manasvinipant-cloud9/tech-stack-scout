@@ -24,6 +24,8 @@ export default async function NotesTab({ params }: { params: Promise<{ id: strin
     { name: "GitHub org", url: g ? `github.com/${g.org}` : c.github_org ? `github.com/${c.github_org}` : "not found", items: g ? `${g.publicRepos}` : "0", ok: !!g },
     { name: "Website fingerprint", url: c.domain, items: s ? `${s.scriptHosts.length}` : "0", ok: !!s },
     { name: "Job board", url: j ? `${j.source} · ${j.board}` : "not found", items: j ? `${j.totalOpen}` : "0", ok: !!j },
+    { name: "Job descriptions", url: j ? `${j.descriptionsScanned} engineering posts read` : "not found", items: j ? `${j.toolMentions.length}` : "0", ok: !!j && j.descriptionsScanned > 0 },
+    { name: "Engineering blog", url: c.signals?.blog ? c.signals.blog.feedUrl.replace(/^https?:\/\//, "") : "no feed found", items: c.signals?.blog ? `${c.signals.blog.posts.length}` : "0", ok: !!c.signals?.blog },
   ];
 
   return (
@@ -62,7 +64,7 @@ export default async function NotesTab({ params }: { params: Promise<{ id: strin
             <ul className="mt-3 space-y-2 text-sm leading-snug">{c.analysis.open_questions.map((q) => <li key={q}>— {q}</li>)}</ul>
           </section>
         )}
-        <Cap className="block">Sources are public and keyless: GitHub REST, the company homepage, and Greenhouse / Lever / Ashby boards.</Cap>
+        <Cap className="block">Sources are public and keyless: GitHub REST, the company homepage, Greenhouse / Lever / Ashby boards (titles and descriptions) and the engineering blog feed.</Cap>
       </div>
     </div>
   );

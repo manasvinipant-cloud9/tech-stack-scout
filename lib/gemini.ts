@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Signals } from "./signals";
-import type { FitReason, Tech } from "./types";
+import type { Analysis, FitReason, Source, Tech } from "./types";
 
 export type Intel = {
   technologies: Tech[];
@@ -8,6 +8,7 @@ export type Intel = {
   orchestration: string;
   fit_reasons: FitReason[];
   open_questions: string[];
+  architecture?: Analysis["architecture"];
   activity_level: "Low" | "Moderate" | "High" | "Very High";
   activity_notes: string;
   summary: string;
@@ -16,7 +17,7 @@ export type Intel = {
 
 const MODEL = () => process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const str = { type: Type.STRING };
-const SOURCES = ["github", "website", "jobs", "none"];
+const SOURCES = ["github", "website", "jobs", "blog", "none"];
 
 const schema = {
   type: Type.OBJECT,
@@ -54,13 +55,23 @@ const schema = {
         required: ["context", "capability", "strength", "source", "evidence"],
       },
     },
+    architecture: {
+      type: Type.OBJECT,
+      description: "Is the engineering org running microservices?",
+      properties: {
+        style: { type: Type.STRING, enum: ["microservices", "monolith", "mixed", "unknown"] },
+        evidence: { ...str, description: "Number-first evidence, e.g. '14 of 60 repos are services; 6 job posts mention microservices'" },
+        source: { type: Type.STRING, enum: SOURCES },
+      },
+      required: ["style", "evidence", "source"],
+    },
     open_questions: { type: Type.ARRAY, items: str, description: "Exactly 3 discovery questions an AE should ask" },
     activity_level: { type: Type.STRING, enum: ["Low", "Moderate", "High", "Very High"] },
     activity_notes: { ...str, description: "One sentence justifying the level with concrete numbers" },
     summary: { ...str, description: "Exactly two paragraphs separated by a blank line" },
     outreach_hook: { ...str, description: "One sentence, the opening line of a cold email" },
   },
-  required: ["technologies", "cloud", "orchestration", "fit_reasons", "open_questions", "activity_level", "activity_notes", "summary", "outreach_hook"],
+  required: ["technologies", "cloud", "orchestration", "fit_reasons", "architecture", "open_questions", "activity_level", "activity_notes", "summary", "outreach_hook"],
 };
 
 export async function analyzeCompany(name: string, domain: string, signals: Signals): Promise<Intel> {
@@ -78,16 +89,17 @@ export async function analyzeCompany(name: string, domain: string, signals: Sign
   const product = process.env.PRODUCT_NAME?.trim() || "our product";
   const prompt = `You are a sales-engineering analyst preparing an enterprise account executive for a call with ${name} (${domain}).
 
-Rules: use ONLY the evidence below. Never invent specifics. Lead every statement with a number where one exists. A technology is "confirmed" only when a signal directly shows it (a repo language, a job post, a script host, a response header); otherwise mark it "inferred". Set "source" to where the evidence came from, or "none" when it is pure inference.
+Rules: use ONLY the evidence below. Never invent specifics. Lead every statement with a number where one exists. A technology is "confirmed" only when a signal directly shows it (a repo language, a job post, a script host, a response header); otherwise mark it "inferred". Set "source" to where the evidence came from (github, website, jobs = job boards and their descriptions, blog = engineering blog posts), or "none" when it is pure inference.
 
 EVIDENCE (JSON):
-${JSON.stringify({ github: gh && { ...gh, languageBytes: undefined, languageShare: langShare }, website: signals.site, hiring: signals.jobs }, null, 1)}
+${JSON.stringify({ github: gh && { ...gh, languageBytes: undefined, languageShare: langShare }, website: signals.site, hiring: signals.jobs, engineeringBlog: signals.blog }, null, 1)}
 
 ${pitch ? `WHAT WE SELL (${product}): ${pitch}` : "We have not described our product, so return an empty fit_reasons array."}
 
 Produce:
 - technologies: languages, cloud, orchestration, CI/CD, IaC, observability, data and security tools. Put languages in category "Language". Do not list generic words. Rate relevance to what we sell.
-- cloud / orchestration: the primary one, or "Unknown".
+- cloud / orchestration: the primary one, or "Unknown". Use hiring.toolMentions (how many scanned job descriptions mention each tool) and blog titles as evidence too.
+- architecture: "microservices" only if the evidence shows it (many service-style repos, orchestration tooling, job descriptions or blog posts mentioning microservices); "monolith" only with explicit evidence; otherwise "unknown". Cite numbers.
 - fit_reasons: exactly 5 pairs of (account attribute → our capability). Be strict: use source "none" when the attribute is not directly evidenced, so it will not count toward the score.
 - open_questions: exactly 3 discovery questions that the evidence cannot answer.
 - activity_level + activity_notes: justified with repos pushed in 90 days, repo count and open engineering roles (cite notable titles). If there is no hiring data, say so.
@@ -119,8 +131,8 @@ Produce:
 
 /** A claim can't cite a source we never collected; downgrade it so it can't inflate the fit score. */
 function sanitize(out: Intel, s: Signals, hasPitch: boolean): Intel {
-  const have = { github: !!s.github, website: !!s.site, jobs: !!s.jobs, none: true } as const;
-  const fix = <T extends { source: keyof typeof have }>(x: T): T => (have[x.source] ? x : { ...x, source: "none" as const });
+  const have: Record<Source, boolean> = { github: !!s.github, website: !!s.site, jobs: !!s.jobs, blog: !!s.blog, none: true };
+  const fix = <T extends { source: Source }>(x: T): T => (have[x.source] ? x : { ...x, source: "none" as Source });
   return {
     ...out,
     technologies: (out.technologies ?? []).slice(0, 16).map((t) => {
@@ -131,6 +143,7 @@ function sanitize(out: Intel, s: Signals, hasPitch: boolean): Intel {
       ? (out.fit_reasons ?? []).slice(0, 5).map((r) => ({ ...fix(r), strength: Math.min(3, Math.max(1, Math.round(r.strength))) as 1 | 2 | 3 }))
       : [],
     open_questions: (out.open_questions ?? []).slice(0, 3),
+    architecture: out.architecture ? fix(out.architecture) : undefined,
   };
 }
 

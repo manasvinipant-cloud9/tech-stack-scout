@@ -52,6 +52,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
 
   const recent = [...(g?.recentRepos ?? [])].sort((x, y) => +new Date(y.pushed_at) - +new Date(x.pushed_at)).slice(0, 5);
   const numbers = facts(c);
+  const blog = c.signals?.blog;
 
   return (
     <div className="space-y-4">
@@ -131,7 +132,7 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
         </section>
 
         <section>
-          <div className="mb-1 flex items-baseline justify-between"><h3 className="text-base font-bold">Latest signals</h3><Cap>{recent.length + (j ? 1 : 0)}</Cap></div>
+          <div className="mb-1 flex items-baseline justify-between"><h3 className="text-base font-bold">Latest signals</h3><Cap>{recent.length + (blog?.posts.slice(0, 3).length ?? 0) + (j ? 1 + (j.toolMentions.length ? 1 : 0) : 0)}</Cap></div>
           <ul className="divide-y divide-line-soft">
             {recent.map((r) => (
               <li key={r.name} className="grid grid-cols-[52px_1fr] gap-2 py-2.5 text-[13px]">
@@ -139,13 +140,27 @@ export default async function Overview({ params }: { params: Promise<{ id: strin
                 <span>{r.name}: pushed{r.language ? ` · ${r.language}` : ""} · {r.stars.toLocaleString("en-US")}★ <span className="text-ink-4">· GitHub</span></span>
               </li>
             ))}
+            {(blog?.posts ?? []).slice(0, 3).map((p) => (
+              <li key={p.link || p.title} className="grid grid-cols-[52px_1fr] gap-2 py-2.5 text-[13px]">
+                <span className="font-mono text-[11px] text-cap">{p.date ? fmtDate(p.date) : "—"}</span>
+                <span>
+                  {p.link ? <a className="link" href={p.link} target="_blank" rel="noreferrer">{p.title}</a> : p.title} <span className="text-ink-4">· Eng blog</span>
+                </span>
+              </li>
+            ))}
+            {j && j.toolMentions.length > 0 && (
+              <li className="grid grid-cols-[52px_1fr] gap-2 py-2.5 text-[13px]">
+                <span className="font-mono text-[11px] text-cap">{fmtDate(c.last_updated)}</span>
+                <span>Job descriptions ({j.descriptionsScanned}): {j.toolMentions.slice(0, 5).map((m) => `${m.name} ${m.postings}`).join(" · ")} <span className="text-ink-4">· {j.source}</span></span>
+              </li>
+            )}
             {j && (
               <li className="grid grid-cols-[52px_1fr] gap-2 py-2.5 text-[13px]">
                 <span className="font-mono text-[11px] text-cap">{fmtDate(c.last_updated)}</span>
                 <span>{j.engineeringOpen} open eng roles{j.sampleTitles[0] ? `, e.g. ${j.sampleTitles[0]}` : ""} <span className="text-ink-4">· {j.source}</span></span>
               </li>
             )}
-            {recent.length === 0 && !j && <li className="py-3 text-[13px] text-ink-3">No dated signals collected.</li>}
+            {recent.length === 0 && !j && !blog && <li className="py-3 text-[13px] text-ink-3">No dated signals collected.</li>}
           </ul>
         </section>
       </aside>

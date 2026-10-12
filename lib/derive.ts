@@ -1,9 +1,9 @@
 import type { Company } from "./db";
 import type { Source, Tech } from "./types";
 
-export const STALE_DAYS = 30;
+export const STALE_DAYS = 7; // research refreshes weekly (see vercel.json)
 
-export const SOURCE_LABEL: Record<Source, string> = { github: "GitHub", website: "Website", jobs: "Job board", none: "No source" };
+export const SOURCE_LABEL: Record<Source, string> = { github: "GitHub", website: "Website", jobs: "Job board", blog: "Eng blog", none: "No source" };
 
 export const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
 export const isStale = (c: Company) => (c.last_updated ? daysSince(c.last_updated) > STALE_DAYS : false);
@@ -47,6 +47,11 @@ export function facts(c: Company): string[] {
   if (ls.length) out.push(ls.map((l) => `${l.name} ${l.pct}%`).join(" · "));
   const j = c.signals?.jobs;
   if (j) out.push(`${j.engineeringOpen} open eng roles of ${j.totalOpen} (${j.source})`);
+  if (j && j.descriptionsScanned > 0 && j.toolMentions.length) {
+    out.push(`In ${j.descriptionsScanned} job descriptions: ${j.toolMentions.slice(0, 4).map((m) => `${m.name} ${m.postings}`).join(" · ")}`);
+  }
+  const b = c.signals?.blog;
+  if (b) out.push(`Eng blog: ${b.posts.length} recent posts · ${b.postsLast90d} in the last 90d`);
   const h = c.signals?.site?.hints ?? [];
   if (h.length) out.push(`Website hints: ${h.slice(0, 4).join(" · ")}`);
   if (c.fit_score != null) out.push(`Fit ${c.fit_score} · ${sourcedCount(c)} sourced, ${unsourcedCount(c)} unsourced reasons`);

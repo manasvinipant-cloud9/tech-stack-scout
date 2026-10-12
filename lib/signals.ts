@@ -27,9 +27,19 @@ export type JobSignals = {
   totalOpen: number;
   engineeringOpen: number;
   sampleTitles: string[];
+  descriptionsScanned: number;
+  toolMentions: { name: string; postings: number }[];
+  microservicesMentions: number;
 };
 
-export type Signals = { github: GithubSignals | null; site: SiteSignals | null; jobs: JobSignals | null };
+export type BlogSignals = {
+  url: string;
+  feedUrl: string;
+  posts: { title: string; link: string; date: string | null }[];
+  postsLast90d: number;
+};
+
+export type Signals = { github: GithubSignals | null; site: SiteSignals | null; jobs: JobSignals | null; blog?: BlogSignals | null };
 
 const gh = (path: string) =>
   fetch(`https://api.github.com${path}`, {
@@ -137,27 +147,55 @@ export async function siteSignals(domain: string): Promise<SiteSignals | null> {
 
 const ENG_RE = /engineer|developer|\bsre\b|devops|platform|infrastructure|security|machine learning|\bml\b|data scientist|architect|software/i;
 
-type Job = { title: string };
+type Job = { title: string; id?: string | number; text?: string };
 
 const getJson = async (url: string) => {
   const r = await fetch(url, { signal: AbortSignal.timeout(8_000), headers: { "User-Agent": "tech-stack-scout" } }).catch(() => null);
   return r?.ok ? await r.json().catch(() => null) : null;
 };
 
+const decodeEntities = (s: string) =>
+  s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
+const stripHtml = (s: string) => decodeEntities(decodeEntities(s)).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
 const BOARDS: [JobSignals["source"], (t: string) => Promise<Job[] | null>][] = [
   ["Greenhouse", async (t) => {
     const d = await getJson(`https://boards-api.greenhouse.io/v1/boards/${t}/jobs`);
-    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title })) : null;
+    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title, id: j.id })) : null;
   }],
   ["Lever", async (t) => {
     const d = await getJson(`https://api.lever.co/v0/postings/${t}?mode=json`);
-    return Array.isArray(d) ? d.map((j: any) => ({ title: j.text })) : null;
+    return Array.isArray(d)
+      ? d.map((j: any) => ({ title: j.text, text: [j.descriptionPlain, ...(j.lists ?? []).map((l: any) => stripHtml(`${l.text} ${l.content}`))].join(" ") }))
+      : null;
   }],
   ["Ashby", async (t) => {
     const d = await getJson(`https://api.ashbyhq.com/posting-api/job-board/${t}`);
-    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title })) : null;
+    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title, text: j.descriptionPlain ?? (j.descriptionHtml ? stripHtml(j.descriptionHtml) : undefined) })) : null;
   }],
 ];
+
+/** Tools and architecture words we look for inside job descriptions. */
+const TOOLS: [string, RegExp][] = [
+  ["AWS", /\baws\b|amazon web services|\beks\b/i], ["GCP", /\bgcp\b|google cloud|\bgke\b/i], ["Azure", /\bazure\b|\baks\b/i],
+  ["Kubernetes", /kubernetes|\bk8s\b/i], ["Docker", /\bdocker\b/i], ["Terraform", /\bterraform\b/i],
+  ["Go", /\bgolang\b|\bgo (?:programming|language|services|backend)|\b(?:in|with|using) go\b/i], ["Rust", /\brust\b/i],
+  ["Java", /\bjava\b(?!script)/i], ["Kotlin", /\bkotlin\b/i], ["Python", /\bpython\b/i], ["TypeScript", /\btypescript\b/i],
+  ["React", /\breact(?:\.js)?\b/i], ["Node.js", /\bnode\.?js\b/i], ["Kafka", /\bkafka\b/i], ["PostgreSQL", /\bpostgres/i],
+  ["Redis", /\bredis\b/i], ["Datadog", /\bdatadog\b/i], ["Prometheus", /\bprometheus\b|\bgrafana\b/i],
+  ["Jenkins", /\bjenkins\b/i], ["GitHub Actions", /github actions/i], ["CircleCI", /\bcircleci\b/i], ["Bazel", /\bbazel\b/i],
+  ["gRPC", /\bgrpc\b/i], ["GraphQL", /\bgraphql\b/i],
+];
+const MICROSERVICES = /micro-?services?|service-oriented|service mesh/i;
+
+async function descriptionTexts(source: JobSignals["source"], token: string, eng: Job[]): Promise<string[]> {
+  const sample = eng.slice(0, 15);
+  if (source === "Greenhouse") {
+    const docs = await Promise.all(sample.map((j) => getJson(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${j.id}`)));
+    return docs.filter(Boolean).map((d: any) => stripHtml(String(d.content ?? "")));
+  }
+  return sample.map((j) => j.text ?? "").filter(Boolean);
+}
 
 /** Public ATS job boards need no API key. We guess the board token from the domain/name. */
 export async function jobSignals(name: string, domain: string, githubOrg: string | null): Promise<JobSignals | null> {
@@ -168,22 +206,85 @@ export async function jobSignals(name: string, domain: string, githubOrg: string
     const hit = hits.find((h) => h.jobs && h.jobs.length > 0);
     if (!hit?.jobs) continue;
     const eng = hit.jobs.filter((j) => ENG_RE.test(j.title));
+    const texts = await descriptionTexts(hit.source, token, eng).catch(() => []);
+    const toolMentions = TOOLS.map(([n, re]) => ({ name: n, postings: texts.filter((t) => re.test(t)).length }))
+      .filter((t) => t.postings > 0).sort((a, b) => b.postings - a.postings).slice(0, 12);
     return {
       source: hit.source,
       board: token,
       totalOpen: hit.jobs.length,
       engineeringOpen: eng.length,
       sampleTitles: eng.slice(0, 20).map((j) => j.title),
+      descriptionsScanned: texts.length,
+      toolMentions,
+      microservicesMentions: texts.filter((t) => MICROSERVICES.test(t)).length,
     };
   }
   return null;
 }
 
+// ---------- Engineering blog (RSS/Atom discovery) ----------
+
+const grab = (xml: string, tag: string) => xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"))?.[1]?.replace(/<!\[CDATA\[|\]\]>/g, "").trim() ?? null;
+
+function parseFeed(xml: string): BlogSignals["posts"] {
+  const items = xml.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) ?? [];
+  return items.map((it) => {
+    const link = grab(it, "link") || it.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || "";
+    const date = grab(it, "pubDate") ?? grab(it, "published") ?? grab(it, "updated");
+    const t = date ? new Date(date) : null;
+    return { title: stripHtml(grab(it, "title") ?? ""), link: link.trim(), date: t && !isNaN(+t) ? t.toISOString() : null };
+  }).filter((p) => p.title);
+}
+
+const fetchText = async (url: string) => {
+  const r = await fetch(url, { signal: AbortSignal.timeout(6_000), redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (compatible; TechStackScout/1.0)" } }).catch(() => null);
+  return r?.ok ? { text: (await r.text().catch(() => "")).slice(0, 600_000), url: r.url } : null;
+};
+
+async function tryBlog(page: string): Promise<BlogSignals | null> {
+  const res = await fetchText(page);
+  if (!res) return null;
+  const feeds: string[] = [];
+  if (/<(rss|feed)[\s>]/i.test(res.text.slice(0, 500))) feeds.push(res.url);
+  for (const tag of res.text.match(/<link[^>]+>/gi) ?? []) {
+    if (/type=["']application\/(rss|atom)\+xml["']/i.test(tag)) {
+      const href = tag.match(/href=["']([^"']+)["']/i)?.[1];
+      if (href) try { feeds.push(new URL(href, res.url).toString()); } catch {}
+    }
+  }
+  const base = res.url.replace(/\/$/, "");
+  for (const suffix of ["/feed", "/rss.xml", "/feed.xml", "/atom.xml", "/rss"]) feeds.push(base + suffix);
+  for (const feedUrl of [...new Set(feeds)].slice(0, 6)) {
+    const f = feedUrl === res.url ? res : await fetchText(feedUrl);
+    if (!f) continue;
+    const posts = parseFeed(f.text);
+    if (!posts.length) continue;
+    posts.sort((a, b) => +new Date(b.date ?? 0) - +new Date(a.date ?? 0));
+    const cutoff = Date.now() - 90 * 864e5;
+    return { url: res.url, feedUrl, posts: posts.slice(0, 8), postsLast90d: posts.filter((p) => p.date && +new Date(p.date) > cutoff).length };
+  }
+  return null;
+}
+
+/** Looks for an engineering blog on common subdomains/paths and reads its feed. Order = most "engineering" first. */
+export async function blogSignals(domain: string): Promise<BlogSignals | null> {
+  const root = domain.replace(/^www\./, "");
+  const label = root.split(".")[0];
+  const pages = [
+    `https://engineering.${root}`, `https://eng.${root}`, `https://tech.${root}`, `https://${label}techblog.com`,
+    `https://${label}engineering.com`, `https://${root}/blog/engineering`, `https://${root}/engineering`, `https://${root}/blog`, `https://blog.${root}`,
+  ];
+  const results = await Promise.all(pages.map((p) => tryBlog(p).catch(() => null)));
+  return results.find(Boolean) ?? null;
+}
+
 export async function gatherSignals(name: string, domain: string, hint: string | null): Promise<Signals> {
-  const [github, site, jobs] = await Promise.all([
+  const [github, site, jobs, blog] = await Promise.all([
     githubSignals(name, domain, hint).catch(() => null),
     siteSignals(domain),
     jobSignals(name, domain, hint).catch(() => null),
+    blogSignals(domain).catch(() => null),
   ]);
-  return { github, site, jobs };
+  return { github, site, jobs, blog };
 }

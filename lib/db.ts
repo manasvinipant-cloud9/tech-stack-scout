@@ -149,14 +149,15 @@ export async function saveIntel(
   );
 }
 
-/** Stalest first; never-researched companies come before everything else. */
-export async function listStale(limit: number): Promise<Company[]> {
+/** Accounts due for the weekly refresh: never researched, older than `days`, or failed last time. Stalest first. */
+export async function listStale(limit: number, days = 7): Promise<Company[]> {
   await ensureSchema();
   const rows = (await sql().query(
     `SELECT ${COLS} FROM target_companies
-     WHERE status <> 'researching' OR last_updated IS NULL
+     WHERE (last_updated IS NULL OR last_updated < now() - ($2 || ' days')::interval OR status = 'error')
+       AND status <> 'researching'
      ORDER BY last_updated ASC NULLS FIRST LIMIT $1`,
-    [limit]
+    [limit, String(days)]
   )) as Record<string, unknown>[];
   return rows.map(toCompany);
 }

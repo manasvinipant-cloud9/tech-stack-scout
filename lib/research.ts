@@ -41,6 +41,7 @@ export async function researchCompany(id: number) {
         orchestration: intel.orchestration,
         fit_reasons: intel.fit_reasons,
         open_questions: intel.open_questions,
+        architecture: intel.architecture,
       },
     });
     return await getCompany(id);

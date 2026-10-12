@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { Company } from "@/lib/db";
-import { cloudOf, daysSince, fmtDate, hasData, isStale, orchOf, primaryLanguage, reposActive, unsourcedCount } from "@/lib/derive";
+import { checklist } from "@/lib/checklist";
+import { cloudOf, daysSince, fmtDate, hasData, isStale, primaryLanguage, reposActive, unsourcedCount } from "@/lib/derive";
+import { ChecklistDots } from "./Checklist";
 import { FitNumber, StaleChip } from "./ui";
 
-export const COLS = "24px minmax(0,1.5fr) 60px 96px 120px 100px 64px 72px 84px minmax(0,1.1fr)";
-const head = ["#", "ACCOUNT", "FIT", "CLOUD", "ORCH.", "LANGUAGE", "ENG ROLES", "REPOS 90D", "RESEARCHED", "NEXT ACTION"];
+export const COLS = "24px minmax(0,1.5fr) 60px 96px 96px 100px 64px 72px 84px minmax(0,1.1fr)";
+const head = ["#", "ACCOUNT", "FIT", "ICP MATCH", "CLOUD", "LANGUAGE", "ENG ROLES", "REPOS 90D", "RESEARCHED", "NEXT ACTION"];
 
 function nextAction(c: Company): { text: string; cls: string } {
   if (c.status === "researching") return { text: "Researching…", cls: "text-ink-3" };
@@ -42,8 +44,8 @@ export default function AccountsTable({ rows }: { rows: Company[] }) {
                 <span className="block truncate text-[11px] text-ink-3">{[c.domain, act, c.hiring_roles != null && `${c.hiring_roles} eng roles`].filter(Boolean).join(" · ")}</span>
               </span>
               <FitNumber n={c.fit_score} />
+              {hasData(c) ? <ChecklistDots checks={checklist(c)} /> : <span className="text-ink-4">—</span>}
               <span className="truncate font-mono text-xs">{cloudOf(c)}</span>
-              <span className="truncate font-mono text-xs">{orchOf(c)}</span>
               <span className="truncate font-mono text-xs">{primaryLanguage(c)}</span>
               <span>{c.hiring_roles ?? "—"}</span>
               <span>{reposActive(c) ?? "—"}</span>

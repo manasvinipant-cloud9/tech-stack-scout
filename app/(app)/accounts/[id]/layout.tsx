@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import AccountTabs from "@/components/AccountTabs";
+import { ChecklistStrip } from "@/components/Checklist";
+import { checklist } from "@/lib/checklist";
 import { AutoRefresh, ResearchButton } from "@/components/ResearchButton";
 import { Banner, Cap, FitNumber } from "@/components/ui";
 import { getAccount } from "@/lib/account";
@@ -62,6 +64,8 @@ export default async function AccountLayout({ children, params }: { children: Re
         </div>
       </div>
 
+      {hasData(c) && !researching && <div className="mt-5"><ChecklistStrip checks={checklist(c)} /></div>}
+
       <div className="mt-6">
         <AccountTabs id={c.id} counts={{ stack: c.analysis?.technologies.length ?? 0, notes: notes.length }} />
         <div className="rounded-b-[18px] rounded-tr-[18px] border border-line bg-panel p-4 sm:p-6">
@@ -89,7 +93,7 @@ export default async function AccountLayout({ children, params }: { children: Re
                   Last run failed: {c.error ?? "unknown error"}. Showing data from {fmtDate(c.last_updated!)}.
                 </Banner>
               )}
-              {isStale(c) && <Banner tone="warn">Researched {daysSince(c.last_updated!)} days ago. Facts were last checked {fmtDate(c.last_updated!)}.</Banner>}
+              {isStale(c) && <Banner tone="warn">Researched {daysSince(c.last_updated!)} days ago. The weekly refresh runs Mondays 06:00 UTC, or re-research now.</Banner>}
               {children}
             </div>
           )}

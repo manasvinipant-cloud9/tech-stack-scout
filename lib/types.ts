@@ -1,4 +1,4 @@
-export type Source = "github" | "website" | "jobs" | "none";
+export type Source = "github" | "website" | "jobs" | "blog" | "none";
 
 export type Tech = {
   name: string;
@@ -23,4 +23,5 @@ export type Analysis = {
   orchestration: string;
   fit_reasons: FitReason[];
   open_questions: string[];
+  architecture?: { style: "microservices" | "monolith" | "mixed" | "unknown"; evidence: string; source: Source };
 };
