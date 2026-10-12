@@ -51,6 +51,10 @@ export default function ComponentsMap() {
       <div>
         <h1 className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.03em]">Components map</h1>
         <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-cap">How data flows from public sources to Nikhil&apos;s call prep</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a href="/Stack_Scout_Components_Map.pdf" download className="inline-flex h-9 items-center gap-2 rounded-lg bg-btn px-3.5 text-[13px] font-semibold text-white hover:brightness-110">Download PDF</a>
+          <a href="/Stack_Scout_Components_Map.md" download className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-ctl px-3.5 text-[13px] font-medium hover:bg-raised">Download Markdown</a>
+        </div>
       </div>
 
       <Panel className="overflow-x-auto p-4">
