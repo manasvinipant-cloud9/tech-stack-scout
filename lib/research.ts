@@ -53,8 +53,12 @@ export async function researchCompany(id: number) {
     return await getCompany(id);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
-    const msg = /RESOURCE_EXHAUSTED|"code":\s*429|quota/i.test(raw)
-      ? "Gemini API quota reached. Previous data is kept; retry after the quota resets, or use a key with billing enabled."
+    const msg = /"code":\s*402|PAYMENT_REQUIRED|insufficient credits/i.test(raw)
+      ? "AI credits exhausted (OpenRouter). Previous data is kept; add credits and retry."
+      : /"code":\s*401|API key not valid|invalid api key|User not found/i.test(raw)
+        ? "The AI API key was rejected. Check OPENROUTER_API_KEY (or GEMINI_API_KEY) in the environment."
+      : /RESOURCE_EXHAUSTED|"code":\s*429|quota/i.test(raw)
+      ? "AI quota or rate limit reached. Previous data is kept; retry shortly, or use a key with billing enabled."
       : /UNAVAILABLE|"code":\s*503|high demand/i.test(raw)
         ? "Gemini is overloaded right now. Previous data is kept; retry in a few minutes."
         : raw;

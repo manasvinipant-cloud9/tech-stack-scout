@@ -1,4 +1,4 @@
-import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
+import { generate, type JsonSchema } from "./llm";
 import type { Signals } from "./signals";
 import type { Analysis, FitReason, Source, Tech } from "./types";
 
@@ -15,71 +15,53 @@ export type Intel = {
   outreach_hook: string;
 };
 
-const MODEL = () => process.env.GEMINI_MODEL || "gemini-3.8-flash";
-// Second Flash model tried when the first is overloaded. Both are Gemini Flash, as the brief requires.
-const FALLBACK_MODEL = () => process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-latest";
-const str = { type: Type.STRING };
+const str = { type: "string" };
 const SOURCES = ["github", "website", "jobs", "blog", "none"];
+const arr = (items: object, description?: string) => ({ type: "array", items, ...(description ? { description } : {}) });
+const obj = (properties: Record<string, object>, description?: string) => ({
+  type: "object", properties, required: Object.keys(properties), additionalProperties: false, ...(description ? { description } : {}),
+});
 
-const schema = {
-  type: Type.OBJECT,
-  properties: {
-    technologies: {
-      type: Type.ARRAY,
-      description: "Every technology evidenced or plausibly implied by the signals (max 16)",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          name: str,
-          category: { type: Type.STRING, enum: ["Language", "Cloud", "Orchestration", "CI/CD", "Build", "IaC", "Framework", "Observability", "Data", "Security", "Other"] },
-          status: { type: Type.STRING, enum: ["confirmed", "inferred"] },
-          evidence: { ...str, description: "Short, number-first evidence, e.g. 'GitHub · 61% of code' or '3 job posts mention it'" },
-          source: { type: Type.STRING, enum: SOURCES },
-          relevance: { type: Type.STRING, enum: ["High", "Medium", "Low"], description: "Relevance to what WE sell" },
-        },
-        required: ["name", "category", "status", "evidence", "source", "relevance"],
-      },
+const schema: JsonSchema = obj({
+  technologies: arr(
+    obj({
+      name: str,
+      category: { type: "string", enum: ["Language", "Cloud", "Orchestration", "CI/CD", "Build", "IaC", "Framework", "Observability", "Data", "Security", "Other"] },
+      status: { type: "string", enum: ["confirmed", "inferred"] },
+      evidence: { ...str, description: "Short, number-first evidence, e.g. 'GitHub · 61% of code' or '3 job posts mention it'" },
+      source: { type: "string", enum: SOURCES },
+      relevance: { type: "string", enum: ["High", "Medium", "Low"], description: "Relevance to what WE sell" },
+    }),
+    "Every technology evidenced or plausibly implied by the signals (max 16)"
+  ),
+  cloud: { ...str, description: "Primary cloud provider or 'Unknown'" },
+  orchestration: { ...str, description: "Primary orchestration/runtime platform or 'Unknown'" },
+  fit_reasons: arr(
+    obj({
+      context: { ...str, description: "Account attribute, number-first" },
+      capability: { ...str, description: "The product capability that addresses it" },
+      strength: { type: "integer", description: "1 weak, 2 good, 3 direct" },
+      source: { type: "string", enum: SOURCES, description: "'none' if this is inference without direct evidence" },
+      evidence: str,
+    }),
+    "Exactly 5 reasons our product fits this account, or an empty array if we have no product description"
+  ),
+  architecture: obj(
+    {
+      style: { type: "string", enum: ["microservices", "monolith", "mixed", "unknown"] },
+      evidence: { ...str, description: "Number-first evidence, e.g. '14 of 60 repos are services; 6 job posts mention microservices'" },
+      source: { type: "string", enum: SOURCES },
     },
-    cloud: { ...str, description: "Primary cloud provider or 'Unknown'" },
-    orchestration: { ...str, description: "Primary orchestration/runtime platform or 'Unknown'" },
-    fit_reasons: {
-      type: Type.ARRAY,
-      description: "Exactly 5 reasons our product fits this account, or an empty array if we have no product description",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          context: { ...str, description: "Account attribute, number-first" },
-          capability: { ...str, description: "The product capability that addresses it" },
-          strength: { type: Type.INTEGER, description: "1 weak, 2 good, 3 direct" },
-          source: { type: Type.STRING, enum: SOURCES, description: "'none' if this is inference without direct evidence" },
-          evidence: str,
-        },
-        required: ["context", "capability", "strength", "source", "evidence"],
-      },
-    },
-    architecture: {
-      type: Type.OBJECT,
-      description: "Is the engineering org running microservices?",
-      properties: {
-        style: { type: Type.STRING, enum: ["microservices", "monolith", "mixed", "unknown"] },
-        evidence: { ...str, description: "Number-first evidence, e.g. '14 of 60 repos are services; 6 job posts mention microservices'" },
-        source: { type: Type.STRING, enum: SOURCES },
-      },
-      required: ["style", "evidence", "source"],
-    },
-    open_questions: { type: Type.ARRAY, items: str, description: "Exactly 3 discovery questions an AE should ask" },
-    activity_level: { type: Type.STRING, enum: ["Low", "Moderate", "High", "Very High"] },
-    activity_notes: { ...str, description: "One sentence justifying the level with concrete numbers" },
-    summary: { ...str, description: "Exactly two paragraphs separated by a blank line" },
-    outreach_hook: { ...str, description: "One sentence, the opening line of a cold email" },
-  },
-  required: ["technologies", "cloud", "orchestration", "fit_reasons", "architecture", "open_questions", "activity_level", "activity_notes", "summary", "outreach_hook"],
-};
+    "Is the engineering org running microservices?"
+  ),
+  open_questions: arr(str, "Exactly 3 discovery questions an AE should ask"),
+  activity_level: { type: "string", enum: ["Low", "Moderate", "High", "Very High"] },
+  activity_notes: { ...str, description: "One sentence justifying the level with concrete numbers" },
+  summary: { ...str, description: "Exactly two paragraphs separated by a blank line" },
+  outreach_hook: { ...str, description: "One sentence, the opening line of a cold email" },
+});
 
 export async function analyzeCompany(name: string, domain: string, signals: Signals): Promise<Intel> {
-  if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set");
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
   const gh = signals.github;
   const totalBytes = gh ? Object.values(gh.languageBytes).reduce((a, b) => a + b, 0) : 0;
   const langShare = gh
@@ -108,35 +90,9 @@ Produce:
 - summary: exactly two paragraphs. P1: what they build and how. P2: what the activity implies and which evidence gaps the AE should probe.
 - outreach_hook: ONE specific opening sentence, STRICT maximum 28 words, referencing a concrete detail from the evidence${pitch ? " and connecting it to what we sell" : ""}. No greetings, no "I came across", no flattery.`;
 
-  // Gemini returns 429/500/503 during demand spikes: retry with backoff, then fall back to a second Flash model.
-  let res;
-  const t0 = Date.now();
-  const models = [...new Set([MODEL(), FALLBACK_MODEL()])];
-  let lastErr: unknown;
-  outer: for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        res = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.5, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { timeout: 100_000 } },
-        });
-        console.log(`[gemini] ${name}: ${model} ${Date.now() - t0}ms`);
-        break outer;
-      } catch (e) {
-        lastErr = e;
-        const msg = e instanceof Error ? e.message : String(e);
-        const transient = /"code":\s*(404|429|500|503|504)|UNAVAILABLE|RESOURCE_EXHAUSTED|NOT_FOUND|timed out|aborted/i.test(msg);
-        if (!transient) throw e;
-        if (/NOT_FOUND|"code":\s*404/.test(msg)) break; // this model is unavailable to us; go straight to the next one
-        await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
-      }
-    }
-  }
-  if (!res) throw lastErr instanceof Error ? lastErr : new Error("Gemini is unavailable");
-  if (!res.text) throw new Error("Gemini returned an empty response");
-  const out = JSON.parse(res.text) as Intel;
-  out.outreach_hook = await tightenHook(ai, out.outreach_hook);
+  const text = await generate(prompt, { temperature: 0.5, schema, effort: "low" });
+  const out = JSON.parse(text) as Intel;
+  out.outreach_hook = await tightenHook(out.outreach_hook);
   return sanitize(out, signals, Boolean(pitch));
 }
 
@@ -161,15 +117,12 @@ function sanitize(out: Intel, s: Signals, hasPitch: boolean): Intel {
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
 /** The model sometimes overshoots the length limit; ask once for a shorter rewrite and fall back to the original. */
-async function tightenHook(ai: GoogleGenAI, hook: string): Promise<string> {
+async function tightenHook(hook: string): Promise<string> {
   if (words(hook) <= 32) return hook;
   try {
-    const r = await ai.models.generateContent({
-      model: FALLBACK_MODEL(),
-      contents: `Rewrite this cold-email opening line in at most 25 words. Keep the most specific concrete detail and the link to the product. Return only the sentence.\n\n${hook}`,
-      config: { temperature: 0.3, thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
-    });
-    const t = r.text?.trim().replace(/^["']|["']$/g, "");
+    const t = (
+      await generate(`Rewrite this cold-email opening line in at most 25 words. Keep the most specific concrete detail and the link to the product. Return only the sentence.\n\n${hook}`, { temperature: 0.3, effort: "minimal" })
+    ).trim().replace(/^["']|["']$/g, "");
     return t && words(t) <= 32 ? t : hook;
   } catch {
     return hook;

@@ -17,7 +17,7 @@ For every company on the watchlist the system collects **live public signals**, 
 | Relevant in cloud / microservices / language contexts | **ICP checklist** per account (targets configurable via env) |
 | Refreshed weekly | Vercel Cron, Mondays 06:00 UTC; "stale" means more than 7 days |
 | Add / remove companies without touching code | UI form and remove button, or edit `target_companies` directly in Postgres |
-| All AI on Gemini Flash | `@google/genai`; no other model is called |
+| All AI on Gemini Flash | Only `google/gemini-3.8-flash` (fallback `google/gemini-3.7-flash`) is called, via OpenRouter restricted to Google's own providers (`google-vertex`, `google-ai-studio`, no fallbacks); or the Gemini API directly. No other vendor's model is used |
 
 ### Evidence rules
 Every claim shows a source and a date. A technology is **confirmed** only when a collected signal shows it; otherwise it is **inferred**. If Gemini cites a source we never collected, the claim is downgraded to "no source". The **fit score** is the strength of *sourced* fit reasons ÷ 15; unsourced reasons score 0. The score and the checklist are computed in code, not by the model.
@@ -41,7 +41,7 @@ Full diagram and component table: [docs/COMPONENTS_MAP.md](./docs/COMPONENTS_MAP
 ## Run locally
 ```bash
 npm install
-cp .env.example .env.local   # fill in DATABASE_URL and GEMINI_API_KEY at minimum
+cp .env.example .env.local   # fill in DATABASE_URL and OPENROUTER_API_KEY (or GEMINI_API_KEY) at minimum
 npm run dev
 ```
 The `target_companies` and `account_notes` tables are created automatically on first request.
@@ -50,7 +50,8 @@ The `target_companies` and `account_notes` tables are created automatically on f
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon Postgres connection string (required) |
-| `GEMINI_API_KEY` | Google AI Studio key (required); `GEMINI_MODEL` optional |
+| `OPENROUTER_API_KEY` | Preferred AI route: OpenRouter, Google models only (`OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL` optional) |
+| `GEMINI_API_KEY` | Alternative route when no OpenRouter key is set: Google AI Studio key (`GEMINI_MODEL` optional) |
 | `GITHUB_TOKEN` | Optional; raises the GitHub rate limit from 60 to 5000 requests/hour |
 | `CRON_SECRET` | Secures `/api/cron/refresh` (Vercel sends it as a bearer token) |
 | `PRODUCT_NAME`, `PRODUCT_PITCH` | What the AE sells; drives fit reasons and openers |
