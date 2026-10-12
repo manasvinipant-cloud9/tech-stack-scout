@@ -52,7 +52,12 @@ export async function researchCompany(id: number) {
     });
     return await getCompany(id);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const raw = e instanceof Error ? e.message : String(e);
+    const msg = /RESOURCE_EXHAUSTED|"code":\s*429|quota/i.test(raw)
+      ? "Gemini API quota reached. Previous data is kept; retry after the quota resets, or use a key with billing enabled."
+      : /UNAVAILABLE|"code":\s*503|high demand/i.test(raw)
+        ? "Gemini is overloaded right now. Previous data is kept; retry in a few minutes."
+        : raw;
     await setStatus(id, "error", msg.slice(0, 500));
     throw e;
   }
