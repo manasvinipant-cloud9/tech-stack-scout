@@ -1,12 +1,15 @@
 import type { Company } from "./db";
 import type { Source, Tech } from "./types";
 
-export const STALE_DAYS = 7; // research refreshes weekly (see vercel.json)
+// Research refreshes weekly (vercel.json). The staleness threshold is a saved setting; the server loads it before rendering.
+let _staleDays = 7;
+export const staleDays = () => _staleDays;
+export const setStaleDays = (n: number) => { _staleDays = Math.min(60, Math.max(1, Math.round(n))); };
 
 export const SOURCE_LABEL: Record<Source, string> = { github: "GitHub", website: "Website", jobs: "Job board", blog: "Eng blog", none: "No source" };
 
 export const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
-export const isStale = (c: Company) => (c.last_updated ? daysSince(c.last_updated) > STALE_DAYS : false);
+export const isStale = (c: Company) => (c.last_updated ? daysSince(c.last_updated) > _staleDays : false);
 export const hasData = (c: Company) => Boolean(c.last_updated);
 
 export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });

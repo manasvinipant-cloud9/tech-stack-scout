@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { openAddCompany } from "@/lib/ui-events";
 import { Dialog } from "./Dialog";
 import { btnPrimary, btnSecondary, inputCls } from "./ui";
 
@@ -55,19 +56,30 @@ function AddForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
   );
 }
 
-/** "Add company" saves to the watchlist; "Research a company" also starts research immediately. */
+/** Buttons only: the dialog itself lives in the app shell so the command palette can open it too. */
 export function AddCompanyButtons({ primary = "add", only }: { primary?: Mode; only?: Mode }) {
-  const [mode, setMode] = useState<Mode | null>(null);
   const btn = (m: Mode) => (m === primary ? btnPrimary : btnSecondary);
   return (
     <>
-      {only !== "research" && <button onClick={() => setMode("add")} className={btn("add")}><Plus className="h-4 w-4" /> Add company</button>}
-      {only !== "add" && <button onClick={() => setMode("research")} className={btn("research")}><Search className="h-3.5 w-3.5" /> Research a company</button>}
-      <Dialog open={mode != null} onClose={() => setMode(null)} title={mode === "research" ? "Research a company" : "Add company"}
-        description={mode === "research" ? "Adds the company and gathers public engineering signals right away." : "Adds the company to your watchlist without researching it yet."}>
-        {mode && <AddForm mode={mode} onDone={() => setMode(null)} />}
-      </Dialog>
+      {only !== "research" && <button onClick={() => openAddCompany("add")} className={btn("add")}><Plus className="h-4 w-4" /> Add company</button>}
+      {only !== "add" && <button onClick={() => openAddCompany("research")} className={btn("research")}><Search className="h-3.5 w-3.5" /> Research a company</button>}
     </>
+  );
+}
+
+/** Shell-level host for the add / research dialog. */
+export function AddCompanyHost() {
+  const [mode, setMode] = useState<Mode | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setMode((e as CustomEvent).detail.mode as Mode);
+    window.addEventListener("stack-add-company", on);
+    return () => window.removeEventListener("stack-add-company", on);
+  }, []);
+  return (
+    <Dialog open={mode != null} onClose={() => setMode(null)} title={mode === "research" ? "Research a company" : "Add company"}
+      description={mode === "research" ? "Adds the company and gathers public engineering signals right away." : "Adds the company to your watchlist without researching it yet."}>
+      {mode && <AddForm mode={mode} onDone={() => setMode(null)} />}
+    </Dialog>
   );
 }
 

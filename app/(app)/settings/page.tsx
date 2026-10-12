@@ -1,12 +1,13 @@
 import { CheckCircle2, CircleDashed, Lock } from "lucide-react";
 import IcpSettings from "@/components/IcpSettings";
+import ResearchPrefs from "@/components/ResearchPrefs";
 import { Banner, PageHeader, Panel, SectionHeader } from "@/components/ui";
 import { dbConfigured, listCompanies } from "@/lib/db";
-import { STALE_DAYS } from "@/lib/derive";
+import { staleDays } from "@/lib/derive";
 import { models, usingOpenRouter } from "@/lib/llm";
 import { productName } from "@/lib/product";
 import { REFRESH_SCHEDULE, nextRunLabel } from "@/lib/schedule";
-import { loadIcp } from "@/lib/settings";
+import { loadSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ function Row({ label, value, ok, note }: { label: string; value: React.ReactNode
 const Locked = () => <span className="inline-flex items-center gap-1 font-mono text-[10.5px] uppercase tracking-[0.06em] text-ink-4"><Lock className="h-3 w-3" /> Environment</span>;
 
 export default async function Settings() {
-  const icp = await loadIcp();
+  const icp = await loadSettings();
   let count = 0, dbOk = false;
   if (dbConfigured()) { try { count = (await listCompanies()).length; dbOk = true; } catch {} }
   const m = models();
@@ -42,11 +43,13 @@ export default async function Settings() {
       </section>
 
       <section className="mb-8">
-        <SectionHeader title="Watchlist and research" hint="Informational" />
-        <Panel className="divide-y divide-line-soft px-5">
-          <Row label="Monitored accounts" value={`${count} companies`} note="Add and remove companies from the Accounts page. No code changes needed." />
-          <Row label="Research becomes stale after" value={`${STALE_DAYS} days`} note="Based on the research timestamp, never on whether a source returned results." />
-          <Row label="Evidence rule" value="Unsourced fit reasons score 0" note="Fit = strength of sourced reasons ÷ 15. Not configurable, by design." />
+        <SectionHeader title="Research preferences" hint="Editable · saved to your database" />
+        <Panel className="p-5">
+          <ResearchPrefs staleDays={icp.staleDays} batchSize={icp.batchSize} />
+          <div className="mt-5 divide-y divide-line-soft border-t border-line-soft pt-1">
+            <Row label="Monitored accounts" value={`${count} companies`} note="Add and remove companies from the Accounts page. No code changes needed." />
+            <Row label="Evidence rule" value="Unsourced fit reasons score 0" note="Fit = strength of sourced reasons ÷ 15. Not configurable, by design." />
+          </div>
         </Panel>
       </section>
 
@@ -55,7 +58,7 @@ export default async function Settings() {
         <Panel className="divide-y divide-line-soft px-5">
           <Row label="Schedule" value={REFRESH_SCHEDULE} note="Set in vercel.json and run by Vercel Cron. Change it in the repository and redeploy." />
           <Row label="Next run" value={nextRunLabel()} />
-          <Row label="Per-run limit" value="12 accounts" note="Accounts that are new, stale or failed last time, oldest first. Manual refresh has no limit." />
+          <Row label="Per-run limit" value={`${icp.batchSize} accounts`} note="Set under Research preferences above." />
           <Row label="Cron secret" ok={env("CRON_SECRET")} value={env("CRON_SECRET") ? "Set" : "Missing"} note="Protects the refresh endpoint." />
         </Panel>
       </section>

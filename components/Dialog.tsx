@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { btnPrimary, btnSecondary } from "./ui";
 
-/** Accessible modal: Esc closes, focus moves inside, backdrop click closes. */
+/** Modal on a frosted panel (one of the few places the glass treatment is used). Esc closes, focus moves inside. */
 export function Dialog({ open, onClose, title, description, children, width = 520 }: { open: boolean; onClose: () => void; title: string; description?: string; children: React.ReactNode; width?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -18,8 +18,8 @@ export function Dialog({ open, onClose, title, description, children, width = 52
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <button aria-label="Close dialog" className="absolute inset-0 bg-black/65" onClick={onClose} tabIndex={-1} />
-      <div ref={ref} className="pop relative w-full rounded-xl border border-line bg-panel p-5 shadow-2xl" style={{ maxWidth: width }}>
+      <button aria-label="Close dialog" className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" onClick={onClose} tabIndex={-1} />
+      <div ref={ref} className="pop relative w-full rounded-2xl border border-white/10 bg-panel/85 p-5 shadow-2xl backdrop-blur-xl" style={{ maxWidth: width }}>
         <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-ink-3 hover:bg-raised"><X className="h-4 w-4" /></button>
         <h2 className="pr-8 text-base font-semibold tracking-[-0.01em]">{title}</h2>
         {description && <p className="mt-1 text-sm text-ink-3">{description}</p>}

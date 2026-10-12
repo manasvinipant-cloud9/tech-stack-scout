@@ -38,11 +38,11 @@ const table: [string, string, string, string][] = [
   ["ICP checklist", "Cloud, microservices and language checks against configurable targets, each with a verdict and evidence.", "TypeScript, env-configured", "lib/checklist.ts · lib/icp.ts"],
   ["Watchlist store", "Companies, cached intelligence, signals JSON, notes. Add and remove from the UI or directly in the database.", "Neon serverless Postgres", "lib/db.ts"],
   ["Weekly refresh", "Re-researches accounts that are new, older than 7 days, or failed last run; time-budgeted, protected by CRON_SECRET.", "Vercel Cron", "app/api/cron/refresh · vercel.json"],
-  ["Overview and Accounts", "Command-centre overview, filterable watchlist with bulk actions, add and remove companies, loading / empty / stale / error states, dark and light themes.", "Next.js App Router, Tailwind v4", "app/(app)/page.tsx · accounts/"],
+  ["Overview and Accounts", "Bento command centre with a prioritised action queue; filterable watchlist with a master–detail quick view, bulk actions, add and remove companies; ⌘K command palette.", "Next.js App Router, Tailwind v4", "app/(app)/page.tsx · lib/actions.ts · components/AccountDrawer.tsx"],
   ["Account Intelligence", "Per-company dossier: summary, ICP fit with evidence, technology map, activity, opening line with regenerate, research history.", "Server components + small client islands", "app/(app)/accounts/[id]"],
   ["Research & Signals", "Signal coverage matrix, evidence gaps, refresh queue and chronological research log.", "Server components", "app/(app)/research · lib/coverage.ts"],
   ["Outreach Studio", "Choose a company, inspect its observations, generate / regenerate / copy an evidence-backed opening line (Gemini Flash).", "Gemini Flash via lib/llm.ts", "app/(app)/outreach · lib/outreach.ts"],
-  ["Settings and run history", "Editable ICP targets and a research-run log, both persisted in Postgres (app_settings, research_runs).", "Neon Postgres", "app/(app)/settings · lib/settings.ts"],
+  ["Settings and run history", "Editable ICP targets and research preferences (stale threshold, weekly limit) plus a research-run log, all persisted in Postgres (app_settings, research_runs).", "Neon Postgres", "app/(app)/settings · lib/settings.ts"],
 ];
 
 export default function ComponentsMap() {

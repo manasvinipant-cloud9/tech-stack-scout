@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import type { AccountRow } from "@/lib/accounts";
 import { FIT_CATEGORIES, fmtDate } from "@/lib/derive";
 import { toast } from "@/lib/toast";
+import AccountDrawer from "./AccountDrawer";
+import { LIST_KEY } from "./AccountContextNav";
 import { ConfirmDialog } from "./Dialog";
 import { IcpIndicators } from "./Icp";
 import { CompanyLogo, TechLogo } from "./Logos";
@@ -32,6 +34,11 @@ export default function AccountsTable({ rows }: { rows: AccountRow[] }) {
   const [busyRow, setBusyRow] = useState<number | null>(null);
   const [bulk, setBulk] = useState<null | { label: string; done: number; total: number }>(null);
   const [confirm, setConfirm] = useState(false);
+  const [open, setOpen] = useState<number | null>(null);
+  // Remember the current (filtered, sorted) list so an opened account can step through it and return to it.
+  useEffect(() => {
+    try { sessionStorage.setItem(LIST_KEY, JSON.stringify({ query: window.location.search, list: rows.map((r) => ({ id: r.id, name: r.name })) })); } catch {}
+  }, [rows]);
   const allOn = rows.length > 0 && rows.every((r) => sel.has(r.id));
   const picked = useMemo(() => rows.filter((r) => sel.has(r.id)), [rows, sel]);
 
@@ -93,10 +100,10 @@ export default function AccountsTable({ rows }: { rows: AccountRow[] }) {
               const href = r.action.text === "Prepare outreach" ? `/outreach?company=${r.id}` : `/accounts/${r.id}`;
               const tone = r.action.tone === "bad" ? "text-bad" : r.action.tone === "warn" ? "text-warn" : r.action.tone === "good" ? "text-good" : "text-ink-3";
               return (
-                <tr key={r.id} className={`border-b border-line-soft last:border-b-0 transition-colors hover:bg-hover ${sel.has(r.id) ? "bg-raised/60" : ""}`}>
+                <tr key={r.id} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) setOpen(rows.findIndex((x) => x.id === r.id)); }} className={`cursor-pointer border-b border-line-soft last:border-b-0 transition-colors hover:bg-hover ${open === rows.findIndex((x) => x.id === r.id) ? "bg-raised" : sel.has(r.id) ? "bg-raised/60" : ""}`}>
                   <td className="px-3 py-3"><input type="checkbox" aria-label={`Select ${r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} className="h-3.5 w-3.5 accent-[var(--accent)]" /></td>
                   <td className="px-2 py-3">
-                    <Link href={`/accounts/${r.id}`} className="group flex min-w-[190px] items-center gap-3">
+                    <Link href={`/accounts/${r.id}`} onClick={(e) => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); setOpen(rows.findIndex((x) => x.id === r.id)); } }} className="group flex min-w-[190px] items-center gap-3" title="Quick view (open the full profile from the panel, or ⌘-click)">
                       <CompanyLogo name={r.name} domain={r.domain} size={32} />
                       <span className="min-w-0"><span className="block truncate text-[14px] font-semibold group-hover:underline">{r.name}</span><span className="block truncate font-mono text-[11px] text-ink-4">{r.domain}</span></span>
                     </Link>
@@ -122,6 +129,7 @@ export default function AccountsTable({ rows }: { rows: AccountRow[] }) {
           </tbody>
         </table>
       </div>
+      <AccountDrawer ids={rows.map((r) => r.id)} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} onConfirm={bulkRemove} busy={!!bulk} danger title={`Remove ${picked.length} compan${picked.length === 1 ? "y" : "ies"}?`} confirmLabel="Remove"
         body={<>This removes {picked.slice(0, 4).map((p) => <b key={p.id}>{p.name}, </b>)}{picked.length > 4 ? `and ${picked.length - 4} more ` : ""}along with their research history and notes.</>} />
     </div>

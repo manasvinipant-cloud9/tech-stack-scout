@@ -1,20 +1,21 @@
 import Link from "next/link";
-import { Check, CircleDashed, Minus } from "lucide-react";
+import { Check, CircleDashed, Minus, X } from "lucide-react";
 import { CompanyLogo } from "@/components/Logos";
 import { RefreshIcon, RefreshMany, AutoRefresh } from "@/components/ResearchButton";
 import { Banner, Cap, EmptyState, PageHeader, Panel, SectionHeader, StatusPill } from "@/components/ui";
 import { SIGNALS, availableCount, isComplete, signalStates, type SignalState } from "@/lib/coverage";
 import { dbConfigured, listCompanies, listRuns } from "@/lib/db";
-import { STALE_DAYS, daysSince, fmtDate, hasData, isStale, relativeTime, unsourcedCount } from "@/lib/derive";
+import { staleDays, daysSince, fmtDate, hasData, isStale, relativeTime, unsourcedCount } from "@/lib/derive";
 import { nextRunLabel } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
 
 const CELL: Record<SignalState, { cls: string; label: string; icon: React.ReactNode }> = {
-  available: { cls: "bg-good-bg text-good", label: "Available", icon: <Check className="h-3 w-3" strokeWidth={3} /> },
-  partial: { cls: "bg-warn-bg text-warn", label: "Partial", icon: <Minus className="h-3 w-3" strokeWidth={3} /> },
-  missing: { cls: "border border-line-ctl text-ink-4", label: "Not found", icon: <span className="text-[10px] font-bold">–</span> },
-  pending: { cls: "border border-dashed text-ink-5", label: "Awaiting research", icon: <CircleDashed className="h-3 w-3" /> },
+  available: { cls: "bg-good-bg text-good", label: "Evidence found", icon: <Check className="h-3 w-3" strokeWidth={3} /> },
+  partial: { cls: "bg-warn-bg text-warn", label: "Partial evidence", icon: <Minus className="h-3 w-3" strokeWidth={3} /> },
+  missing: { cls: "border border-line-ctl text-ink-4", label: "No evidence found", icon: <span className="text-[10px] font-bold">–</span> },
+  pending: { cls: "border border-dashed text-ink-5", label: "Not researched", icon: <CircleDashed className="h-3 w-3" /> },
+  failed: { cls: "bg-bad-bg text-bad", label: "Research failed", icon: <X className="h-3 w-3" strokeWidth={3} /> },
 };
 
 export default async function Research() {
@@ -34,15 +35,15 @@ export default async function Research() {
 
   const matrix = [...all].sort((a, b) => availableCount(a) - availableCount(b) || a.company_name.localeCompare(b.company_name));
   const totals = SIGNALS.map((s) => {
-    const n: Record<SignalState, number> = { available: 0, partial: 0, missing: 0, pending: 0 };
+    const n: Record<SignalState, number> = { available: 0, partial: 0, missing: 0, pending: 0, failed: 0 };
     all.forEach((c) => n[signalStates(c)[s.key]]++);
     return n;
   });
 
   const summary: { label: string; n: number; note: string; href?: string; tone: "good" | "warn" | "bad" | "neutral" }[] = [
-    { label: "Researched and current", n: ok.length, note: `within ${STALE_DAYS} days`, href: "/accounts?fresh=fresh", tone: "good" },
+    { label: "Researched and current", n: ok.length, note: `within ${staleDays()} days`, href: "/accounts?fresh=fresh", tone: "good" },
     { label: "Thin evidence", n: thin.length, note: "fewer than 4 of 6 signals", tone: "warn" },
-    { label: "Stale", n: stale.length, note: `older than ${STALE_DAYS} days`, href: "/accounts?fresh=stale", tone: "warn" },
+    { label: "Stale", n: stale.length, note: `older than ${staleDays()} days`, href: "/accounts?fresh=stale", tone: "warn" },
     { label: "Awaiting research", n: awaiting.length, note: "never researched", href: "/accounts?fresh=never", tone: "neutral" },
     { label: "Failed refresh", n: failed.length, note: "last run errored", href: "/accounts?status=error", tone: "bad" },
   ];
@@ -98,7 +99,7 @@ export default async function Research() {
         </Panel>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-ink-3">
           {(Object.keys(CELL) as SignalState[]).map((k) => <span key={k} className="inline-flex items-center gap-1.5"><span className={`inline-grid h-[18px] w-[18px] place-items-center rounded ${CELL[k].cls}`} style={k === "pending" ? { borderColor: "var(--dashed)" } : undefined}>{CELL[k].icon}</span>{CELL[k].label}</span>)}
-          <span className="text-ink-4">“Not found” is not proof of absence.</span>
+          <span className="text-ink-4">“No evidence found” is not proof of absence. “Research failed” means the request itself did not complete.</span>
         </div>
       </section>
 

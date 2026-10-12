@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CircleDashed, ExternalLink } from "lucide-react";
+import { Disclosure } from "@/components/Disclosure";
 import { IcpLegend, StatusGlyph, STATUS_TEXT } from "@/components/Icp";
 import OpeningLine from "@/components/OpeningLine";
 import { SourceChip } from "@/components/SourceChip";
@@ -9,6 +10,7 @@ import { Panel, SectionHeader, StatusPill } from "@/components/ui";
 import { getAccount } from "@/lib/account";
 import { checklist, type CheckStatus } from "@/lib/checklist";
 import { listRuns } from "@/lib/db";
+import { availableCount, SIGNALS, signalStates } from "@/lib/coverage";
 import { facts, fmtDate, fmtDateYear, isStale, langShare, relativeTime, sourceLinks, unsourcedCount } from "@/lib/derive";
 import { loadIcp } from "@/lib/settings";
 import type { Source } from "@/lib/types";
@@ -85,11 +87,13 @@ export default async function Intelligence({ params }: { params: Promise<{ id: s
             {sourced.length > 0 && (
               <div className="mt-5">
                 <div className="mb-1.5 text-[13px] font-semibold">Supported by evidence <span className="font-mono text-[11px] font-normal text-ink-4">{sourced.length}</span></div>
-                <ul className="divide-y divide-line-soft">
+                <ul className="space-y-1.5">
                   {sourced.map((r, i) => (
-                    <li key={i} className="flex flex-wrap items-start justify-between gap-2 py-2.5">
-                      <div className="min-w-0 flex-1 basis-[300px] text-[13.5px]"><span className="text-ink-2">{r.context}</span> <span className="font-medium text-accent">→ {r.capability}</span><div className="mt-0.5 text-xs text-ink-4">{r.evidence}</div></div>
-                      <div className="flex items-center gap-2"><span className="font-mono text-[10.5px] text-ink-4" title="How directly this supports the fit (1 to 3)">strength {r.strength}/3</span><SourceChip source={r.source} url={linkMap[r.source]} /></div>
+                    <li key={i}>
+                      <Disclosure summary={<span className="text-[13.5px] font-normal"><span className="text-ink-2">{r.context}</span> <span className="font-medium text-accent">→ {r.capability}</span></span>} count={`${r.strength}/3`}>
+                        <p className="text-ink-2">{r.evidence || "No evidence text was recorded."}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-4">Source <SourceChip source={r.source} url={linkMap[r.source]} /><span>Strength {r.strength} of 3: how directly the evidence supports this reason.</span></div>
+                      </Disclosure>
                     </li>
                   ))}
                 </ul>
@@ -138,8 +142,43 @@ export default async function Intelligence({ params }: { params: Promise<{ id: s
                 </ul>
               </div>
             )}
+            <div className="mt-5 space-y-2">
+              {j && j.sampleTitles.length > 0 && (
+                <Disclosure summary="Hiring signals: open engineering roles" count={j.engineeringOpen}>
+                  <ul className="space-y-1 text-ink-2">{j.sampleTitles.map((t) => <li key={t}>{t}</li>)}</ul>
+                  <p className="mt-2 text-xs text-ink-4">Showing up to {j.sampleTitles.length} of {j.engineeringOpen} engineering roles on the {j.source} board. <a className="link" href={linkMap.jobs} target="_blank" rel="noreferrer">Open the board</a></p>
+                </Disclosure>
+              )}
+              {blog && blog.posts.length > 0 && (
+                <Disclosure summary="Engineering blog evidence: recent posts" count={blog.posts.length}>
+                  <ul className="space-y-1.5">{blog.posts.map((p) => <li key={p.link || p.title} className="flex items-baseline justify-between gap-3"><span className="min-w-0">{p.link ? <a className="hover:text-accent hover:underline" href={p.link} target="_blank" rel="noreferrer">{p.title}</a> : p.title}</span><span className="shrink-0 font-mono text-[11px] text-ink-4">{p.date ? fmtDate(p.date) : "—"}</span></li>)}</ul>
+                </Disclosure>
+              )}
+              {g && g.recentRepos.length > 0 && (
+                <Disclosure summary="Public repositories: most recently active" count={g.recentRepos.length}>
+                  <ul className="space-y-1.5">{[...g.recentRepos].sort((x, y) => +new Date(y.pushed_at) - +new Date(x.pushed_at)).map((r) => <li key={r.name} className="flex items-baseline justify-between gap-3"><span className="min-w-0"><a className="hover:text-accent hover:underline" href={`${g.url}/${r.name}`} target="_blank" rel="noreferrer">{r.name}</a>{r.language && <span className="text-ink-4"> · {r.language}</span>}{r.description && <span className="block truncate text-xs text-ink-4">{r.description}</span>}</span><span className="shrink-0 font-mono text-[11px] text-ink-4">{fmtDate(r.pushed_at)}</span></li>)}</ul>
+                </Disclosure>
+              )}
+            </div>
             <p className="mt-4 text-[11px] text-ink-4">These are point-in-time counts. Trend lines will appear once enough weekly snapshots exist.</p>
           </Panel>
+        </section>
+
+        <section>
+          <SectionHeader title="How this was researched" hint="Methodology and confidence" />
+          <Disclosure summary={<span>Evidence coverage: <b className="text-ink">{availableCount(c)} of 6 signals</b> found · {availableCount(c) >= 5 ? "High" : availableCount(c) >= 4 ? "Medium" : "Low"} confidence</span>}>
+            <ul className="grid gap-x-8 gap-y-1.5 sm:grid-cols-2">
+              {SIGNALS.map((s) => { const st = signalStates(c)[s.key]; return (
+                <li key={s.key} className="flex items-center justify-between gap-3"><span className="text-ink-2">{s.label}</span><StatusPill tone={st === "available" ? "good" : st === "partial" ? "warn" : st === "failed" ? "bad" : "neutral"}>{st === "available" ? "Evidence found" : st === "partial" ? "Partial" : st === "failed" ? "Failed" : st === "pending" ? "Not researched" : "None found"}</StatusPill></li>
+              ); })}
+            </ul>
+            <div className="mt-4 space-y-2 border-t border-line-soft pt-3 text-ink-3">
+              <p><b className="text-ink-2">Directly evidenced</b> means a collected signal shows it (a repository language, a job post, a response header). <b className="text-ink-2">Inferred</b> means the model reasoned beyond the signal, and any claim citing a source we never collected is downgraded to “no source”.</p>
+              <p><b className="text-ink-2">Fit</b> is the strength (1 to 3) of sourced fit reasons divided by 15. Unsourced reasons score 0, so missing evidence never raises a score.</p>
+              <p><b className="text-ink-2">Confidence</b> reflects how many of the six public signals were found: 5 or 6 is high, 4 is medium, fewer is low. A signal that was not found is not proof the company lacks it.</p>
+              <p>Sources are public and keyless: GitHub REST, the company homepage, Greenhouse, Lever and Ashby job boards, and the engineering blog feed. Researched {fmtDateYear(c.last_updated)}.</p>
+            </div>
+          </Disclosure>
         </section>
       </div>
 

@@ -10,8 +10,8 @@ import { fmtDateYear, relativeTime, sourceLinks } from "@/lib/derive";
 
 export const dynamic = "force-dynamic";
 
-const TONE: Record<SignalState, "good" | "warn" | "neutral"> = { available: "good", partial: "warn", missing: "neutral", pending: "neutral" };
-const TEXT: Record<SignalState, string> = { available: "Available", partial: "Partial", missing: "Not found", pending: "Pending" };
+const TONE: Record<SignalState, "good" | "warn" | "neutral" | "bad"> = { available: "good", partial: "warn", missing: "neutral", pending: "neutral", failed: "bad" };
+const TEXT: Record<SignalState, string> = { available: "Evidence found", partial: "Partial evidence", missing: "No evidence found", pending: "Not researched", failed: "Research failed" };
 
 export default async function EvidenceAndNotes({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
@@ -48,7 +48,7 @@ export default async function EvidenceAndNotes({ params }: { params: Promise<{ i
             ))}</tbody>
           </table>
         </Panel>
-        <p className="mt-2 text-[11.5px] text-ink-4">“Not found” means nothing public turned up. It is not evidence that the company does not use the technology.</p>
+        <p className="mt-2 text-[11.5px] text-ink-4">“No evidence found” means nothing public turned up. It is not evidence that the company does not use the technology.</p>
       </section>
       <section>
         <SectionHeader title="Notes" hint="Use #tags to organise" />

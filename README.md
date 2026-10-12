@@ -33,14 +33,14 @@ Vercel Cron (weekly) → collector for stale / failed accounts
 Full diagram and component table: [docs/COMPONENTS_MAP.md](./docs/COMPONENTS_MAP.md).
 
 ## Screens
-A persistent sidebar links five workspaces, plus a global company search and profile menu.
-- **Overview:** the command centre. One hero metric (strong ICP matches), "Ready for your next call" (top accounts with an evidence-backed reason), fit distribution, signal-coverage summary, computed insights and recent research activity.
-- **Accounts:** the watchlist. Search, saved views, filters (ICP match, fit range, status, freshness, cloud, language), sorting, bulk refresh/remove, and add/remove companies. All filter state lives in the URL.
-- **Account Intelligence:** a research dossier per company: engineering context, "why this account fits" (ICP criteria with evidence and gaps), an interactive technology map with logos and source evidence, engineering activity, the suggested opening line (regenerate/copy), open questions, and research history. A second tab holds sources and notes.
-- **Research & Signals:** coverage across the watchlist (account × signal matrix), accounts missing fit evidence, accounts needing a refresh, and a chronological refresh log.
-- **Outreach Studio:** pick a company, review its context and the observations the line could rest on, then generate, regenerate and copy an evidence-backed opening line.
-- **Settings:** edit the ICP cloud and language targets (saved to the database); read-only status for the schedule and integrations.
-- Dark theme by default with a light option; responsive down to phone width; loading, empty, stale, error and missing-evidence states throughout.
+A collapsible sidebar (icon rail on tablet, drawer on phones) links five workspaces. A global **⌘K command palette** (also `/`) jumps to any company or page and runs quick actions.
+- **Overview:** a bento command centre. A hero metric (strong ICP matches, with its 3/2/1/none breakdown), supporting metrics that link to filtered lists, a prioritised **Recommended next actions** queue (outreach-ready accounts, fit evidence to complete, research to refresh or retry), fit distribution, signal coverage, "What changed" (score movement and new engineering signals) and a research timeline. Actions and insights never repeat each other.
+- **Accounts:** the watchlist, with search, five saved views, filters (ICP match, fit range, status, freshness, cloud, language), sorting, bulk refresh and remove, and add or remove with confirmation. All filter state lives in the URL. **Master–detail:** clicking a row opens a quick-view drawer (step through the list with `j`/`k`); the full profile remembers the filtered list you came from and offers previous/next.
+- **Account Intelligence:** a research dossier per company: engineering context, why the account fits (ICP criteria, missing evidence, expandable evidence per fit reason), an interactive technology map with logos, engineering activity (expandable hiring, blog and repository evidence), the suggested opening line with its signal and source (regenerate or copy), open questions, a "How this was researched" methodology panel with evidence coverage, and research history.
+- **Research & Signals:** coverage across the watchlist (account × signal matrix) with five states (evidence found, partial, no evidence found, not researched, research failed), accounts missing fit evidence, a refresh queue, and a chronological refresh log.
+- **Outreach Studio:** pick a company, review its context and the observations a line could rest on, then generate, regenerate and copy an evidence-backed opening line.
+- **Settings:** editable ICP targets and research preferences (stale threshold, weekly per-run limit), all saved to the database and honoured by the weekly job; read-only status for the schedule and integrations.
+- Dark theme by default with a light option; responsive from phone to desktop; loading, empty, stale, error and missing-evidence states throughout. Glass (blur) is used only for the command palette, dialogs and floating menus; tables, charts and content panels stay solid.
 
 ## Run locally
 ```bash

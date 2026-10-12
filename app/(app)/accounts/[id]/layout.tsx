@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, ExternalLink, FileText, PenLine } from "lucide-react";
+import AccountContextNav from "@/components/AccountContextNav";
 import AccountTabs from "@/components/AccountTabs";
 import { IcpIndicators } from "@/components/Icp";
 import { CompanyLogo } from "@/components/Logos";
@@ -9,7 +10,7 @@ import { AutoRefresh, ResearchButton } from "@/components/ResearchButton";
 import { Banner, Cap, FitBadge, StatusPill, btnPrimary, btnSecondary } from "@/components/ui";
 import { getAccount } from "@/lib/account";
 import { checklist } from "@/lib/checklist";
-import { FIT_CATEGORIES, STALE_DAYS, daysSince, fitCategory, fmtDate, hasData, isStale, relativeTime } from "@/lib/derive";
+import { FIT_CATEGORIES, staleDays, daysSince, fitCategory, fmtDate, hasData, isStale, relativeTime } from "@/lib/derive";
 import { listNotes } from "@/lib/db";
 import { nextRunLabel } from "@/lib/schedule";
 import { loadIcp } from "@/lib/settings";
@@ -32,9 +33,7 @@ export default async function AccountLayout({ children, params }: { children: Re
   return (
     <div>
       <AutoRefresh active={researching} />
-      <nav className="mb-4 flex items-center gap-1.5 text-[13px] text-ink-4" aria-label="Breadcrumb">
-        <Link href="/accounts" className="hover:text-ink">Accounts</Link><ChevronRight className="h-3 w-3" /><span className="text-ink-2">{c.company_name}</span>
-      </nav>
+      <AccountContextNav id={c.id} name={c.company_name} />
 
       <header className="rounded-xl border border-line bg-panel p-5 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
@@ -96,7 +95,7 @@ export default async function AccountLayout({ children, params }: { children: Re
             {c.status === "error" && (
               <Banner tone="bad">Last refresh failed: {c.error ?? "unknown error"} Showing data from {fmtDate(c.last_updated!)}.</Banner>
             )}
-            {stale && <Banner tone="warn">Research is {daysSince(c.last_updated!)} days old (stale after {STALE_DAYS}). The weekly refresh runs {nextRunLabel()}, or refresh now.</Banner>}
+            {stale && <Banner tone="warn">Research is {daysSince(c.last_updated!)} days old (stale after {staleDays()}). The weekly refresh runs {nextRunLabel()}, or refresh now.</Banner>}
             {children}
           </div>
         )}

@@ -72,7 +72,7 @@ export function queryRows(rows: AccountRow[], p: Query): AccountRow[] {
   const q = p.q?.trim().toLowerCase();
   let out = rows.filter(viewTests[parseView(p.view)]);
   if (q) out = out.filter((r) => r.name.toLowerCase().includes(q) || r.domain.toLowerCase().includes(q));
-  if (p.icp) out = out.filter((r) => (p.icp === "3" ? r.match === 3 : p.icp === "2" ? r.match >= 2 : p.icp === "1" ? r.match >= 1 : r.match === 0));
+  if (p.icp) out = out.filter((r) => (p.icp === "3" ? r.match === 3 : p.icp === "2" ? r.match >= 2 : p.icp === "1" ? r.match >= 1 : p.icp === "e2" ? r.match === 2 : p.icp === "e1" ? r.match === 1 : r.match === 0));
   if (p.fit) out = out.filter((r) => r.fitCat === p.fit);
   if (p.status) out = out.filter((r) => r.status === p.status);
   if (p.fresh) out = out.filter((r) => (p.fresh === "stale" ? r.stale : p.fresh === "never" ? r.lastUpdated == null : r.lastUpdated != null && !r.stale));

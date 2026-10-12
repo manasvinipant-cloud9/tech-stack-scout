@@ -2,7 +2,8 @@ import type { Company } from "./db";
 import { hasData } from "./derive";
 
 export type SignalKey = "github" | "repos" | "hiring" | "blog" | "website" | "stack";
-export type SignalState = "available" | "partial" | "missing" | "pending";
+/** available = evidence found · partial = some evidence · missing = searched, nothing found · pending = not researched yet · failed = the research request itself failed */
+export type SignalState = "available" | "partial" | "missing" | "pending" | "failed";
 
 export const SIGNALS: { key: SignalKey; label: string; short: string; hint: string }[] = [
   { key: "github", label: "GitHub organization", short: "GitHub org", hint: "A public GitHub organization was found for the company" },
@@ -18,7 +19,10 @@ export const SIGNALS: { key: SignalKey; label: string; short: string; hint: stri
  * "pending" means the account has not been researched yet.
  */
 export function signalStates(c: Company): Record<SignalKey, SignalState> {
-  if (!hasData(c)) return { github: "pending", repos: "pending", hiring: "pending", blog: "pending", website: "pending", stack: "pending" };
+  if (!hasData(c)) {
+    const s: SignalState = c.status === "error" ? "failed" : "pending";
+    return { github: s, repos: s, hiring: s, blog: s, website: s, stack: s };
+  }
   const g = c.signals?.github;
   const j = c.signals?.jobs;
   const techs = c.analysis?.technologies ?? [];

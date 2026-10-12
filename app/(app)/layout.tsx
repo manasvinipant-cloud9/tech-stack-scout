@@ -2,12 +2,13 @@ import AppShell from "@/components/AppShell";
 import { dbConfigured, listCompanies } from "@/lib/db";
 import { fmtDate, relativeTime } from "@/lib/derive";
 import { nextRunLabel } from "@/lib/schedule";
-import { loadIcp } from "@/lib/settings";
+import { productName } from "@/lib/product";
+import { loadSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await loadIcp();
+  await loadSettings();
   let companies: { id: number; name: string; domain: string }[] = [];
   let last: string | null = null;
   if (dbConfigured()) {
@@ -20,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   void fmtDate;
   return (
-    <AppShell companies={companies} lastResearch={last} nextRefresh={nextRunLabel()}>
+    <AppShell companies={companies} lastResearch={last} nextRefresh={nextRunLabel()} product={productName()}>
       {children}
     </AppShell>
   );
