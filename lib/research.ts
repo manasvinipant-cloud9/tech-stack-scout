@@ -15,6 +15,8 @@ export async function researchCompany(id: number) {
       infrastructure: intel.infrastructure,
       activityLevel: intel.activity_level,
       activityNotes: intel.activity_notes,
+      hiringRoles: signals.jobs?.engineeringOpen ?? null,
+      hiringSource: signals.jobs?.source ?? null,
       summary: intel.summary,
       outreachHook: intel.outreach_hook,
       signals,

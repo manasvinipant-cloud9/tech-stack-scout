@@ -11,6 +11,8 @@ export type Company = {
   infrastructure: string[];
   activity_level: string | null;
   activity_notes: string | null;
+  hiring_roles: number | null;
+  hiring_source: string | null;
   summary: string | null;
   outreach_hook: string | null;
   error: string | null;
@@ -49,6 +51,8 @@ export function ensureSchema() {
         error          TEXT,
         created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+    await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_roles INTEGER`;
+    await sql()`ALTER TABLE target_companies ADD COLUMN IF NOT EXISTS hiring_source TEXT`;
   })().catch((e) => {
     schemaReady = null;
     throw e;
@@ -57,7 +61,7 @@ export function ensureSchema() {
 }
 
 const COLS = `id, company_name, domain, github_org, status, last_updated, languages,
-  infrastructure, activity_level, activity_notes, summary, outreach_hook, error, created_at`;
+  infrastructure, activity_level, activity_notes, hiring_roles, hiring_source, summary, outreach_hook, error, created_at`;
 
 const toCompany = (r: Record<string, unknown>) => r as unknown as Company;
 
@@ -104,6 +108,8 @@ export async function saveIntel(
     infrastructure: string[];
     activityLevel: string;
     activityNotes: string;
+    hiringRoles: number | null;
+    hiringSource: string | null;
     summary: string;
     outreachHook: string;
     signals: unknown;
@@ -115,10 +121,11 @@ export async function saveIntel(
        github_org = COALESCE($2, github_org),
        languages = $3::jsonb, infrastructure = $4::jsonb,
        activity_level = $5, activity_notes = $6, summary = $7,
-       outreach_hook = $8, signals = $9::jsonb
+       outreach_hook = $8, signals = $9::jsonb,
+       hiring_roles = $10, hiring_source = $11
      WHERE id = $1`,
     [id, d.githubOrg, JSON.stringify(d.languages), JSON.stringify(d.infrastructure),
-     d.activityLevel, d.activityNotes, d.summary, d.outreachHook, JSON.stringify(d.signals)]
+     d.activityLevel, d.activityNotes, d.summary, d.outreachHook, JSON.stringify(d.signals), d.hiringRoles, d.hiringSource]
   );
 }
 

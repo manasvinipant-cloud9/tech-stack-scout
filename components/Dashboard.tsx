@@ -175,6 +175,14 @@ function Card({ c, loading, onRefresh, onRemove }: { c: Company; loading: boolea
             </div>
           )}
 
+          {c.hiring_roles != null && (
+            <p className="text-sm text-slate-600">
+              <span className="mr-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">Hiring</span>
+              {c.hiring_roles} open engineering role{c.hiring_roles === 1 ? "" : "s"}
+              <span className="text-slate-400"> · via {c.hiring_source}</span>
+            </p>
+          )}
+
           <div className="space-y-2 text-sm leading-relaxed text-slate-700">
             {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
           </div>

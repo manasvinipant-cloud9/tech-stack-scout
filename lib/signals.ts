@@ -21,7 +21,15 @@ export type SiteSignals = {
   hints: string[];
 };
 
-export type Signals = { github: GithubSignals | null; site: SiteSignals | null };
+export type JobSignals = {
+  source: "Greenhouse" | "Lever" | "Ashby";
+  board: string;
+  totalOpen: number;
+  engineeringOpen: number;
+  sampleTitles: string[];
+};
+
+export type Signals = { github: GithubSignals | null; site: SiteSignals | null; jobs: JobSignals | null };
 
 const gh = (path: string) =>
   fetch(`https://api.github.com${path}`, {
@@ -127,10 +135,55 @@ export async function siteSignals(domain: string): Promise<SiteSignals | null> {
   }
 }
 
+const ENG_RE = /engineer|developer|\bsre\b|devops|platform|infrastructure|security|machine learning|\bml\b|data scientist|architect|software/i;
+
+type Job = { title: string };
+
+const getJson = async (url: string) => {
+  const r = await fetch(url, { signal: AbortSignal.timeout(8_000), headers: { "User-Agent": "tech-stack-scout" } }).catch(() => null);
+  return r?.ok ? await r.json().catch(() => null) : null;
+};
+
+const BOARDS: [JobSignals["source"], (t: string) => Promise<Job[] | null>][] = [
+  ["Greenhouse", async (t) => {
+    const d = await getJson(`https://boards-api.greenhouse.io/v1/boards/${t}/jobs`);
+    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title })) : null;
+  }],
+  ["Lever", async (t) => {
+    const d = await getJson(`https://api.lever.co/v0/postings/${t}?mode=json`);
+    return Array.isArray(d) ? d.map((j: any) => ({ title: j.text })) : null;
+  }],
+  ["Ashby", async (t) => {
+    const d = await getJson(`https://api.ashbyhq.com/posting-api/job-board/${t}`);
+    return d?.jobs ? d.jobs.map((j: any) => ({ title: j.title })) : null;
+  }],
+];
+
+/** Public ATS job boards need no API key. We guess the board token from the domain/name. */
+export async function jobSignals(name: string, domain: string, githubOrg: string | null): Promise<JobSignals | null> {
+  const root = domain.split(".").slice(-2, -1)[0] ?? domain;
+  const tokens = [...new Set([root, slug(name), name.toLowerCase().replace(/\s+/g, "-"), githubOrg?.toLowerCase()].filter(Boolean) as string[])];
+  for (const token of tokens) {
+    const hits = await Promise.all(BOARDS.map(async ([source, fetchJobs]) => ({ source, jobs: await fetchJobs(token).catch(() => null) })));
+    const hit = hits.find((h) => h.jobs && h.jobs.length > 0);
+    if (!hit?.jobs) continue;
+    const eng = hit.jobs.filter((j) => ENG_RE.test(j.title));
+    return {
+      source: hit.source,
+      board: token,
+      totalOpen: hit.jobs.length,
+      engineeringOpen: eng.length,
+      sampleTitles: eng.slice(0, 20).map((j) => j.title),
+    };
+  }
+  return null;
+}
+
 export async function gatherSignals(name: string, domain: string, hint: string | null): Promise<Signals> {
-  const [github, site] = await Promise.all([
+  const [github, site, jobs] = await Promise.all([
     githubSignals(name, domain, hint).catch(() => null),
     siteSignals(domain),
+    jobSignals(name, domain, hint).catch(() => null),
   ]);
-  return { github, site };
+  return { github, site, jobs };
 }

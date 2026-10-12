@@ -43,15 +43,15 @@ export async function analyzeCompany(name: string, domain: string, signals: Sign
 Use ONLY the evidence below. If evidence is thin or missing (e.g. no public GitHub org), say so plainly and lean on what exists; never invent specifics. Do not claim a tool is in use unless a signal supports it.
 
 EVIDENCE (JSON):
-${JSON.stringify({ github: gh && { ...gh, languageBytes: undefined, languageShare: langShare }, website: signals.site }, null, 1)}
+${JSON.stringify({ github: gh && { ...gh, languageBytes: undefined, languageShare: langShare }, website: signals.site, hiring: signals.jobs }, null, 1)}
 
 ${pitch ? `WHAT WE SELL: ${pitch}\n` : ""}
 Produce:
 - languages: dominant languages in their public code (empty array if no GitHub evidence).
-- infrastructure: cloud/infra/tooling evidenced by signals.
-- activity_level + activity_notes: engineering/team-building activity, justified with the numbers (repos pushed in last 90 days, stars, repo count).
+- infrastructure: ONLY cloud providers, hosting, CDN, databases, CI/CD, observability, container/orchestration or infrastructure-as-code tools evidenced by signals (e.g. AWS, Cloudflare, Terraform, Kubernetes, Datadog). Do NOT list programming languages, UI frameworks, build tools, CLI frameworks or package managers here. Empty array if nothing qualifies.
+- activity_level + activity_notes: engineering/team-building activity, justified with the numbers (repos pushed in last 90 days, repo count, and open engineering roles from the hiring data if present; cite the role count and notable titles). If there is no hiring data, say so rather than guess.
 - summary: exactly two paragraphs. P1: what they build and how (stack, open-source posture). P2: what the activity implies about team momentum and what an AE should be aware of, including evidence gaps.
-- outreach_hook: ONE specific opening sentence (max 35 words) for a cold email, referencing a concrete detail from the evidence (a repo, language mix, tool, or activity pattern)${pitch ? " and connecting it to what we sell" : ""}. No greetings, no flattery clichés like "I came across" or "I noticed you're a leader in", no template feel.`;
+- outreach_hook: ONE specific opening sentence (STRICT maximum 28 words) for a cold email, referencing a concrete detail from the evidence (a repo, language mix, tool, or activity pattern)${pitch ? " and connecting it to what we sell" : ""}. No greetings, no flattery clichés like "I came across" or "I noticed you're a leader in", no template feel.`;
 
   // Gemini returns 429/500/503 during demand spikes; retry with backoff before giving up.
   let res;
@@ -73,9 +73,28 @@ Produce:
   const text = res.text;
   if (!text) throw new Error("Gemini returned an empty response");
   const out = JSON.parse(text) as Intel;
+  out.outreach_hook = await tightenHook(ai, out.outreach_hook);
   return {
     ...out,
     languages: (out.languages ?? []).slice(0, 6),
     infrastructure: (out.infrastructure ?? []).slice(0, 8),
   };
+}
+
+const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+
+/** The model sometimes overshoots the length limit; ask once for a shorter rewrite and fall back to the original. */
+async function tightenHook(ai: GoogleGenAI, hook: string): Promise<string> {
+  if (words(hook) <= 32) return hook;
+  try {
+    const r = await ai.models.generateContent({
+      model: MODEL(),
+      contents: `Rewrite this cold-email opening line in at most 25 words. Keep the most specific concrete detail and the link to the product. Return only the sentence.\n\n${hook}`,
+      config: { temperature: 0.3 },
+    });
+    const t = r.text?.trim().replace(/^["']|["']$/g, "");
+    return t && words(t) <= 32 ? t : hook;
+  } catch {
+    return hook;
+  }
 }
