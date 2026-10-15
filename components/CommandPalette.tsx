@@ -45,6 +45,7 @@ export default function CommandPalette({ companies, light, toggleTheme }: { comp
     { id: "p-outreach", group: "Go to", label: "Outreach Studio", icon: <PenLine className="h-4 w-4" />, run: go("/outreach") },
     { id: "p-settings", group: "Go to", label: "Settings", icon: <Settings className="h-4 w-4" />, run: go("/settings") },
     { id: "p-map", group: "Go to", label: "Components map", icon: <Map className="h-4 w-4" />, run: go("/components-map") },
+    { id: "p-video", group: "Go to", label: "Project walkthrough video", icon: <Map className="h-4 w-4" />, run: go("/walkthrough") },
     { id: "a-add", group: "Actions", label: "Add company", hint: "Save to the watchlist", icon: <Plus className="h-4 w-4" />, run: () => openAddCompany("add") },
     { id: "a-research", group: "Actions", label: "Research a company", hint: "Add and research now", icon: <Search className="h-4 w-4" />, run: () => openAddCompany("research") },
     { id: "a-theme", group: "Actions", label: light ? "Switch to dark theme" : "Switch to light theme", icon: light ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />, run: toggleTheme },

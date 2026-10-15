@@ -1,0 +1,569 @@
+WEBVTT
+
+1
+00:00:00.350 --> 00:00:01.516
+Hello, and welcome.
+
+2
+00:00:01.516 --> 00:00:08.509
+This video walks through Stack Scout, an AI powered tech stack intelligence system for business to business sales.
+
+3
+00:00:08.509 --> 00:00:24.764
+It covers the problem we were given, how the system works from end to end, how artificial intelligence is used and kept honest, what the finished product looks like, how it was built step by step, the problems we hit and how we fixed them, and where its limits are.
+
+4
+00:00:24.764 --> 00:00:28.690
+It is deployed live on Vercel, and the code is public on GitHub.
+
+5
+00:00:29.940 --> 00:00:31.155
+Here is the problem.
+
+6
+00:00:31.155 --> 00:00:36.987
+Nikhil is an enterprise account executive at a startup that sells a developer productivity tool.
+
+7
+00:00:36.987 --> 00:00:44.703
+His product is only relevant in specific contexts: certain cloud platforms, microservices, or particular programming languages.
+
+8
+00:00:44.703 --> 00:00:52.844
+Before a first call he researches each company by hand, reading engineering blogs, job descriptions, conference talks and public code.
+
+9
+00:00:52.844 --> 00:01:04.144
+For a sprint of twenty companies that takes two to three hours, and the brief says he closes about thirty percent more deals when he mentions something real about how the company builds.
+
+10
+00:01:04.144 --> 00:01:11.495
+So the task is to keep his watchlist automatically current, and to give him a personalised opening line for each company.
+
+11
+00:01:12.745 --> 00:01:15.536
+The brief translates into a clear checklist.
+
+12
+00:01:15.536 --> 00:01:16.996
+Use live external data.
+
+13
+00:01:16.996 --> 00:01:19.216
+Use Gemini Flash for every AI task.
+
+14
+00:01:19.216 --> 00:01:23.785
+Show languages, cloud tooling and engineering activity for each company.
+
+15
+00:01:23.785 --> 00:01:29.368
+Write a two paragraph summary and a first line that is not a fill in the blank template.
+
+16
+00:01:29.368 --> 00:01:32.921
+Show relevance across cloud, microservices and language.
+
+17
+00:01:32.921 --> 00:01:33.873
+Refresh weekly.
+
+18
+00:01:33.873 --> 00:01:37.680
+Let the user add and remove companies without touching code.
+
+19
+00:01:37.680 --> 00:01:42.438
+And deliver a public Vercel link, a GitHub repository and a components map.
+
+20
+00:01:42.438 --> 00:01:46.309
+Every one of these is implemented, and the table shows where.
+
+21
+00:01:47.559 --> 00:01:49.347
+This is the components map.
+
+22
+00:01:49.347 --> 00:01:52.063
+On the left are four live public sources.
+
+23
+00:01:52.063 --> 00:01:54.977
+A signal collector gathers them in parallel.
+
+24
+00:01:54.977 --> 00:02:00.277
+The AI layer, using Gemini Flash, turns the evidence into a structured analysis.
+
+25
+00:02:00.277 --> 00:02:06.900
+An evidence guard and scoring step then check that analysis, so nothing is claimed without a source.
+
+26
+00:02:06.900 --> 00:02:11.670
+The result is stored in Neon Postgres and displayed by the Next J S app.
+
+27
+00:02:11.670 --> 00:02:20.016
+Vercel Cron triggers the whole pipeline every week, and the same pipeline runs on demand whenever a user refreshes an account.
+
+28
+00:02:20.016 --> 00:02:23.791
+The bottom lane shows how the buttons in the app call it.
+
+29
+00:02:25.041 --> 00:02:29.774
+The system uses four live public sources, and none of them need a paid key.
+
+30
+00:02:29.774 --> 00:02:39.682
+From GitHub it finds the company's organisation and reads the language mix, how many repositories were pushed to in the last ninety days, and the star count.
+
+31
+00:02:39.682 --> 00:02:45.550
+From the company website it reads response headers and script hosts to spot technology hints.
+
+32
+00:02:45.550 --> 00:02:59.623
+From the public job boards of Greenhouse, Lever and Ashby it reads open engineering roles, and goes further by reading up to fifteen job descriptions to count mentions of tools such as AWS, Kubernetes, Go and microservices.
+
+33
+00:02:59.623 --> 00:03:05.176
+And it discovers the engineering blog's feed to see recent posts and publishing cadence.
+
+34
+00:03:05.176 --> 00:03:12.812
+One principle runs through all of this: not finding something is never treated as proof that the company does not use it.
+
+35
+00:03:14.062 --> 00:03:15.985
+Now the artificial intelligence.
+
+36
+00:03:15.985 --> 00:03:23.018
+Every model call in the application goes through a single module, which guarantees only Gemini Flash models are used.
+
+37
+00:03:23.018 --> 00:03:26.264
+There is no Claude or other model anywhere in the app.
+
+38
+00:03:26.264 --> 00:03:30.591
+The model is asked for structured J S O N, so the output is predictable.
+
+39
+00:03:30.591 --> 00:03:44.176
+It returns a technology inventory, a judgement on whether the company runs microservices, five reasons the product fits, three discovery questions for the sales call, the two paragraph summary, and the personalised first line.
+
+40
+00:03:44.176 --> 00:03:52.410
+That first line can be regenerated on demand, and it always comes with the specific signal it was built on and the source of that signal.
+
+41
+00:03:52.410 --> 00:04:01.607
+Calls are routed through OpenRouter, locked to Google's models and Google's own infrastructure, with retries and a second Gemini Flash model as fallback.
+
+42
+00:04:02.857 --> 00:04:08.692
+This is the part we care most about, because language models can sound confident and be wrong.
+
+43
+00:04:08.692 --> 00:04:11.982
+So the model only suggests, and the evidence decides.
+
+44
+00:04:11.982 --> 00:04:16.266
+Every technology is marked as confirmed or inferred, with its source.
+
+45
+00:04:16.266 --> 00:04:25.329
+An evidence guard checks the output, and if the model cites a source that was never collected, the claim is downgraded to inferred with no source.
+
+46
+00:04:25.329 --> 00:04:32.096
+The relevance checklist for cloud, microservices and language shows match, partial, no match, or no evidence.
+
+47
+00:04:32.096 --> 00:04:46.312
+The fit score is calculated in code from the sourced reasons only: each reason is rated one to three, the sum is divided by fifteen, and a reason without a public source scores zero, so missing evidence can never inflate a score.
+
+48
+00:04:47.562 --> 00:04:50.467
+For persistence we use Neon serverless Postgres.
+
+49
+00:04:50.467 --> 00:04:58.334
+The target companies table holds the watchlist, the cached analysis, the signals, the fit score, the summary and the opening line.
+
+50
+00:04:58.334 --> 00:05:02.026
+A research runs table records every refresh and what changed.
+
+51
+00:05:02.026 --> 00:05:11.769
+Notes are stored per company, and a settings table holds the ideal customer profile targets, the stale threshold and the weekly limit, all editable from the app.
+
+52
+00:05:11.769 --> 00:05:16.792
+One thing worth being upfront about: the brief mentions Supabase, but we used Neon.
+
+53
+00:05:16.792 --> 00:05:28.594
+Both are Postgres, Neon was set up directly through the Vercel integration, and all database access is in one file, so moving to Supabase would mean swapping the driver and the connection string.
+
+54
+00:05:29.844 --> 00:05:32.405
+Automation works like this.
+
+55
+00:05:32.405 --> 00:05:38.951
+Vercel Cron calls a protected endpoint every Monday at six A M U T C.
+
+56
+00:05:38.951 --> 00:05:44.738
+The endpoint needs a secret, so the public cannot trigger it.
+
+57
+00:05:44.738 --> 00:06:01.056
+It picks accounts that are new, stale or failed, oldest first, up to a saved weekly limit, and researches two at a time inside a time budget so the function never overruns.
+
+58
+00:06:01.056 --> 00:06:04.756
+Each run is recorded with what changed.
+
+59
+00:06:04.756 --> 00:06:12.251
+Stale means older than seven days by default, and that is editable in settings.
+
+60
+00:06:12.251 --> 00:06:16.520
+Users can also refresh any account on demand.
+
+61
+00:06:16.520 --> 00:06:22.118
+In our tests one account costs about two cents of AI usage.
+
+62
+00:06:23.368 --> 00:06:24.727
+Now the product itself.
+
+63
+00:06:24.727 --> 00:06:26.679
+The Overview is a command centre.
+
+64
+00:06:26.679 --> 00:06:35.902
+The hero metric is the number of strong ideal customer profile matches, with a breakdown of how many accounts match three, two, one or none of the criteria.
+
+65
+00:06:35.902 --> 00:06:39.036
+The main area is a queue of recommended next actions.
+
+66
+00:06:39.036 --> 00:06:40.750
+It is not just a leaderboard.
+
+67
+00:06:40.750 --> 00:06:49.264
+It mixes accounts that are ready for outreach, accounts where fit evidence still needs completing, and accounts whose research needs refreshing.
+
+68
+00:06:49.264 --> 00:06:56.950
+Each item shows the match indicators, a one line reason taken from the evidence, how fresh the research is, and a clear next step.
+
+69
+00:06:58.200 --> 00:07:06.332
+Further down, a feed shows what changed: score movements detected on refresh and new engineering blog posts, all computed from stored records.
+
+70
+00:07:06.332 --> 00:07:08.336
+Three charts answer real questions.
+
+71
+00:07:08.336 --> 00:07:12.803
+Which clouds and languages does my watchlist run on, compared with my targets?
+
+72
+00:07:12.803 --> 00:07:15.322
+And which high fit accounts are also hiring?
+
+73
+00:07:15.322 --> 00:07:22.939
+Accounts with no public job board are marked unknown rather than plotted as zero, because we never present missing data as a finding.
+
+74
+00:07:24.189 --> 00:07:26.759
+The Accounts page is the working watchlist.
+
+75
+00:07:26.759 --> 00:07:36.023
+You can search by name or domain, switch between five saved views, filter by match, fit, status, freshness, cloud and language, and sort by several fields.
+
+76
+00:07:36.023 --> 00:07:42.896
+Users can add a company, remove one with a confirmation step, refresh research, or run bulk actions on a selection.
+
+77
+00:07:42.896 --> 00:07:48.276
+All of the filter state lives in the web address, so any view can be shared or bookmarked.
+
+78
+00:07:48.276 --> 00:07:58.137
+Clicking a row opens a quick view drawer so you keep your place in the list, and the full profile remembers which list you came from, with previous and next buttons.
+
+79
+00:07:59.387 --> 00:08:00.936
+Each company gets a dossier.
+
+80
+00:08:00.936 --> 00:08:09.065
+At the top is the two paragraph engineering context written by Gemini, with the public sources it used linked underneath so anyone can verify them.
+
+81
+00:08:09.065 --> 00:08:10.890
+On the right is the opening line.
+
+82
+00:08:10.890 --> 00:08:18.190
+Beneath it you can see exactly which signal the line is built on and where that signal came from, and you can regenerate or copy it.
+
+83
+00:08:18.190 --> 00:08:25.103
+There are also three discovery questions the public evidence cannot answer, and key numbers that are computed, not generated.
+
+84
+00:08:26.353 --> 00:08:33.976
+Lower on the same page, the fit explanation shows each of the three criteria with its evidence and a link to the source.
+
+85
+00:08:33.976 --> 00:08:41.853
+Every fit reason can be expanded to see the evidence behind it, and missing evidence is shown explicitly rather than hidden.
+
+86
+00:08:41.853 --> 00:08:52.272
+The technology map groups what was found into cloud, languages, and frameworks, with real logos, and clicking any technology reveals the evidence and source for it.
+
+87
+00:08:52.272 --> 00:09:01.039
+There is a language share bar, engineering activity, and a methodology panel explaining how the research was done and how confident it is.
+
+88
+00:09:02.289 --> 00:09:05.170
+Three supporting workspaces complete the product.
+
+89
+00:09:05.170 --> 00:09:15.754
+Research and Signals shows coverage across the whole watchlist in a matrix with five honest states: evidence found, partial, no evidence found, not researched, and research failed.
+
+90
+00:09:15.754 --> 00:09:19.635
+It also shows freshness, evidence gaps and a log of every refresh.
+
+91
+00:09:19.635 --> 00:09:28.220
+Outreach Studio is a focused page where you choose a company, review the observations a line could rest on, and generate and copy an opening line.
+
+92
+00:09:28.220 --> 00:09:37.628
+Settings lets the user edit the ideal customer profile targets, the stale threshold and the weekly limit, and these really are saved and used by the weekly job.
+
+93
+00:09:38.878 --> 00:09:39.465
+On design.
+
+94
+00:09:39.465 --> 00:09:50.960
+The interface evolved through three versions: a simple dashboard first, then a light editorial design from a design handoff, then the premium dark system you see now, which also has a light theme.
+
+95
+00:09:50.960 --> 00:09:53.717
+Design patterns were used only where they help.
+
+96
+00:09:53.717 --> 00:10:04.978
+A bento layout for the overview, command centre style actions, Swiss grid style tables, a master and detail drawer for company research, and progressive disclosure so detail is one click away.
+
+97
+00:10:04.978 --> 00:10:11.429
+Glass blur is used only for floating elements like the command palette and dialogs, never on tables or charts.
+
+98
+00:10:11.429 --> 00:10:20.403
+Every chart answers a real question, there are no invented trends, and the app works from a phone to a desktop with accessible labels and keyboard focus.
+
+99
+00:10:21.653 --> 00:10:23.160
+Here is how it was built.
+
+100
+00:10:23.160 --> 00:10:31.901
+We started by reading the brief and choosing the stack: Next J S with Tailwind, Neon for the database, Gemini for the AI, and Vercel for hosting.
+
+101
+00:10:31.901 --> 00:10:37.628
+Then came the database, the GitHub signal collector, the first Gemini analysis and a dashboard.
+
+102
+00:10:37.628 --> 00:10:41.667
+Next the repository, the Vercel deployment and the Neon connection.
+
+103
+00:10:41.667 --> 00:10:48.659
+We added job boards and themes, then the weekly cron, the relevance checklist, and blog and job description signals.
+
+104
+00:10:48.659 --> 00:10:53.723
+The interface was redesigned twice, and the AI calls were routed through OpenRouter.
+
+105
+00:10:53.723 --> 00:11:03.007
+Later came charts, the command palette, the quick view drawer, and research on twenty real companies, followed by the components map and this walkthrough.
+
+106
+00:11:03.007 --> 00:11:10.060
+It was built iteratively with an A I coding assistant, and every step was type checked, built, deployed and verified.
+
+107
+00:11:11.310 --> 00:11:15.860
+Not everything worked first time, and these are the real problems we hit.
+
+108
+00:11:15.860 --> 00:11:23.027
+Deployments were blocked because the commit email was not linked to GitHub, so we used the GitHub no reply address.
+
+109
+00:11:23.027 --> 00:11:28.200
+The Gemini model we first chose was retired, so we updated it and added a fallback.
+
+110
+00:11:28.200 --> 00:11:33.935
+Overload and quota errors led to retries, a fallback model and plain English error messages.
+
+111
+00:11:33.935 --> 00:11:40.292
+When an A P I key was rejected, we routed the calls through OpenRouter, restricted to Google's models.
+
+112
+00:11:40.292 --> 00:11:46.088
+Older records crashed pages after the data model grew, so defaults are now filled in on read.
+
+113
+00:11:46.088 --> 00:11:54.066
+A client bundle accidentally included the database driver, a mobile layout overflowed, and a font feature distorted punctuation.
+
+114
+00:11:54.066 --> 00:11:55.500
+We fixed each of these.
+
+115
+00:11:55.500 --> 00:12:00.486
+And Vercel occasionally did not start a deployment, which a fresh push resolved.
+
+116
+00:12:01.736 --> 00:12:03.130
+How do we know it works?
+
+117
+00:12:03.130 --> 00:12:06.672
+Every change was type checked and built before it was pushed.
+
+118
+00:12:06.672 --> 00:12:12.596
+Twenty real companies were researched live on the deployed app, taking fifteen to twenty seconds each.
+
+119
+00:12:12.596 --> 00:12:24.618
+We tested interactions in a real browser: that filter counts match the overview, that the quick view steps through the list, that the command palette and sidebar behave, and that settings save and read back.
+
+120
+00:12:24.618 --> 00:12:29.554
+Layouts were checked at phone, tablet and desktop widths with no horizontal overflow.
+
+121
+00:12:29.554 --> 00:12:37.685
+In production every route returns success, and the A I paths for research, regenerating a line and saving settings were verified end to end.
+
+122
+00:12:38.935 --> 00:12:41.791
+It is important to be honest about the limits.
+
+123
+00:12:41.791 --> 00:12:47.750
+The system only sees public signals, so private repositories and internal tooling are invisible.
+
+124
+00:12:47.750 --> 00:12:52.530
+The phrase no evidence found does not mean absent, and the interface says so.
+
+125
+00:12:52.530 --> 00:12:59.235
+Job boards are discovered by guessing the board name from the domain, so some companies show no hiring data.
+
+126
+00:12:59.235 --> 00:13:03.146
+GitHub data covers the sixty most recently active repositories.
+
+127
+00:13:03.146 --> 00:13:09.602
+Model judgements can be wrong, which is exactly why every claim carries a source and a confidence level.
+
+128
+00:13:09.602 --> 00:13:17.920
+There are no trend charts yet because run history only started recently, and the app has no login because it is public for evaluation.
+
+129
+00:13:19.170 --> 00:13:23.106
+Finally, some questions you may be asked, with short answers.
+
+130
+00:13:23.106 --> 00:13:24.202
+Why Gemini Flash?
+
+131
+00:13:24.202 --> 00:13:29.234
+It is fast, costs about two cents per account, and supports structured output.
+
+132
+00:13:29.234 --> 00:13:31.169
+How do you stop hallucination?
+
+133
+00:13:31.169 --> 00:13:38.459
+Claims need a collected source, an evidence guard downgrades the rest, and the score counts only sourced reasons.
+
+134
+00:13:38.459 --> 00:13:40.136
+Why Neon and not Supabase?
+
+135
+00:13:40.136 --> 00:13:47.813
+Both are Postgres, Neon was already connected through Vercel, and swapping needs only the driver and connection string.
+
+136
+00:13:47.813 --> 00:13:49.942
+How does the weekly refresh work?
+
+137
+00:13:49.942 --> 00:13:56.458
+Vercel Cron calls a secret protected endpoint on Mondays and refreshes new, stale or failed accounts.
+
+138
+00:13:56.458 --> 00:13:58.393
+And what would you build next?
+
+139
+00:13:58.393 --> 00:14:05.167
+Trend charts from run history, a login, C R M sync, conference talk signals and wider job board coverage.
+
+140
+00:14:06.417 --> 00:14:10.432
+That is Stack Scout, from the problem statement to a deployed product.
+
+141
+00:14:10.432 --> 00:14:15.250
+The live app, the public repository and the components map are all linked on screen.
+
+142
+00:14:15.250 --> 00:14:18.749
+Thank you for watching, and I am happy to take any questions.
