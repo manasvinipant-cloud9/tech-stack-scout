@@ -1,0 +1,221 @@
+WEBVTT
+
+1
+00:00:00.120 --> 00:00:00.871
+Meet Nikhil.
+
+2
+00:00:00.871 --> 00:00:06.632
+He is an enterprise account executive at a startup that sells a developer productivity tool.
+
+3
+00:00:06.632 --> 00:00:16.086
+His product only fits some engineering teams, so before every call he used to spend hours digging through engineering blogs, job posts and public code.
+
+4
+00:00:16.086 --> 00:00:20.469
+This is a real working day with Stack Scout, recorded on the live app.
+
+5
+00:00:21.478 --> 00:00:22.698
+Nine in the morning.
+
+6
+00:00:22.698 --> 00:00:24.285
+Nikhil opens the Overview.
+
+7
+00:00:24.285 --> 00:00:33.376
+The big number counts the accounts that match all three contexts his product is relevant in: cloud platform, microservices, and programming language.
+
+8
+00:00:33.376 --> 00:00:35.024
+Below it is his work queue.
+
+9
+00:00:35.024 --> 00:00:36.488
+It is not a leaderboard.
+
+10
+00:00:36.488 --> 00:00:45.946
+It tells him what to do next: accounts that are ready for outreach, ones where the evidence for fit is still thin, and ones whose research needs a refresh.
+
+11
+00:00:45.946 --> 00:00:49.668
+Every item shows why, in one line taken from public evidence.
+
+12
+00:00:50.670 --> 00:00:52.496
+Further down is the landscape.
+
+13
+00:00:52.496 --> 00:00:57.791
+Which clouds and languages does his watchlist run on, compared with what he sells into?
+
+14
+00:00:57.791 --> 00:01:00.225
+Which high fit accounts are also hiring?
+
+15
+00:01:00.225 --> 00:01:05.642
+And what changed since last time, like a new engineering blog post at one of his targets.
+
+16
+00:01:06.642 --> 00:01:09.277
+He has a call with MongoDB at eleven.
+
+17
+00:01:09.277 --> 00:01:13.123
+He presses control K, types the name, and he is there.
+
+18
+00:01:13.123 --> 00:01:16.613
+No folders, no spreadsheets, no twenty open tabs.
+
+19
+00:01:17.615 --> 00:01:24.121
+The dossier opens with two paragraphs on how they build, written by Gemini Flash from collected evidence.
+
+20
+00:01:24.121 --> 00:01:29.635
+The public sources it used are linked right underneath, so Nikhil can check them himself.
+
+21
+00:01:29.635 --> 00:01:39.983
+Then three cards explain why MongoDB fits: its cloud platform, whether it runs microservices, and its main programming languages, each with evidence and a source link.
+
+22
+00:01:40.984 --> 00:01:46.178
+He wants to be sure, so he expands a fit reason and sees the exact evidence behind it.
+
+23
+00:01:46.178 --> 00:01:52.156
+In the technology map he clicks a technology and gets its source and how directly it was confirmed.
+
+24
+00:01:52.156 --> 00:01:59.162
+Anything the model could not support is marked as inferred, and missing evidence is shown as missing, never as a no.
+
+25
+00:02:00.163 --> 00:02:03.918
+Now the part that used to take the longest: what to say first.
+
+26
+00:02:03.918 --> 00:02:09.852
+The suggested opening line is built on one real observation, shown right below it with its source.
+
+27
+00:02:09.852 --> 00:02:14.152
+It is a sentence he can actually use, not a fill in the blank template.
+
+28
+00:02:14.152 --> 00:02:14.939
+He copies it.
+
+29
+00:02:15.941 --> 00:02:18.681
+Before the call he opens the one page brief.
+
+30
+00:02:18.681 --> 00:02:30.142
+It holds the opening line, how relevant the company is, the key numbers, the confirmed stack, three questions to ask, and a box of things not to assume because the evidence is missing.
+
+31
+00:02:30.142 --> 00:02:32.509
+He can print it or save it as a P D F.
+
+32
+00:02:33.509 --> 00:02:34.131
+Afternoon.
+
+33
+00:02:34.131 --> 00:02:35.937
+A colleague mentions PostHog.
+
+34
+00:02:35.937 --> 00:02:39.920
+Nikhil adds it with one dialog: the company name and its domain.
+
+35
+00:02:39.920 --> 00:02:49.195
+Stack Scout now gathers the public signals from GitHub, the website, the job boards and the engineering blog, and asks Gemini Flash for the analysis.
+
+36
+00:02:49.195 --> 00:02:53.490
+This is the research that used to eat most of an hour of tab hopping.
+
+37
+00:02:53.490 --> 00:02:55.358
+It takes about twenty seconds.
+
+38
+00:03:04.985 --> 00:03:05.919
+And there it is.
+
+39
+00:03:05.919 --> 00:03:12.805
+A fit score, the three match indicators, a summary and its sources, for a company he had never looked at this morning.
+
+40
+00:03:13.807 --> 00:03:19.176
+In Outreach Studio he picks PostHog and sees the observations a line could be built on.
+
+41
+00:03:19.176 --> 00:03:21.275
+Then he generates an opening line.
+
+42
+00:03:21.275 --> 00:03:27.076
+If he does not like the angle, he regenerates it, and gets a line built on a different signal.
+
+43
+00:03:28.076 --> 00:03:30.275
+End of the day, he plans next week.
+
+44
+00:03:30.275 --> 00:03:34.358
+On the Accounts page he opens the saved view: ready for outreach.
+
+45
+00:03:34.358 --> 00:03:40.200
+He narrows by cloud platform, and clicks a row to open a quick view without losing his place.
+
+46
+00:03:40.200 --> 00:03:45.603
+The J and K keys step through the list, so he can review a dozen accounts in a minute.
+
+47
+00:03:46.605 --> 00:03:50.159
+Before he trusts the list, he checks Research and Signals.
+
+48
+00:03:50.159 --> 00:03:57.574
+The matrix shows, for every account, which signals were found, which were partial, which found nothing, and which failed.
+
+49
+00:03:57.574 --> 00:04:01.066
+Nothing found is shown differently from a failed request.
+
+50
+00:04:01.066 --> 00:04:08.358
+And he never has to remember to refresh: every Monday the weekly job updates new, stale and failed accounts on its own.
+
+51
+00:04:09.359 --> 00:04:12.062
+PostHog was only a test, so he removes it.
+
+52
+00:04:12.062 --> 00:04:19.268
+Stack Scout asks for confirmation first, because removing a company also removes its notes and research history.
+
+53
+00:04:20.269 --> 00:04:22.108
+That is a day with Stack Scout.
+
+54
+00:04:22.108 --> 00:04:32.310
+From which accounts matter, to what to say first, to a brand new lead researched in seconds, with every claim traced to a source, and the data refreshing itself every week.
+
+55
+00:04:32.310 --> 00:04:42.156
+The manual research that the brief puts at two to three hours for twenty companies now happens automatically, so Nikhil spends his time on conversations, not on tabs.

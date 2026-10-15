@@ -122,7 +122,7 @@ export default function AppShell({ companies, lastResearch, nextRefresh, product
                   <div className="border-b border-line-soft px-3.5 py-3"><div className="text-[13px] font-semibold">Nikhil</div><div className="text-xs text-ink-4">Enterprise account executive</div></div>
                   <Link role="menuitem" href="/settings" className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] hover:bg-raised"><Settings className="h-4 w-4 text-ink-3" /> Settings</Link>
                   <Link role="menuitem" href="/components-map" className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] hover:bg-raised"><Map className="h-4 w-4 text-ink-3" /> Components map</Link>
-                  <Link role="menuitem" href="/walkthrough" className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] hover:bg-raised"><PlayCircle className="h-4 w-4 text-ink-3" /> Project walkthrough</Link>
+                  <Link role="menuitem" href="/walkthrough" className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] hover:bg-raised"><PlayCircle className="h-4 w-4 text-ink-3" /> Videos</Link>
                   <a role="menuitem" href="https://github.com/manasvinipant-cloud9/tech-stack-scout" target="_blank" rel="noreferrer" className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] hover:bg-raised"><ExternalLink className="h-4 w-4 text-ink-3" /> Source code</a>
                 </div>
               )}
